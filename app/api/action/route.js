@@ -53,7 +53,6 @@ export async function POST(req) {
             output.studentRanks = studentRankQuery.rows;
         }
         
-        // Data Survei Khusus Admin
         if (role === 'admin') {
             const surveys = await turso.execute("SELECT * FROM Exams WHERE Mapel = 'SURVEY'");
             output.surveys = surveys.rows;
@@ -107,9 +106,6 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: 'Data User berhasil disimpan!' });
     }
 
-    // ==========================================
-    // MANAJEMEN UJIAN & BANK SOAL
-    // ==========================================
     if (action === 'adminSaveExam') {
       const d = args[0]; const id = d.examId || ('EX' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
@@ -123,7 +119,7 @@ export async function POST(req) {
 
     if (action === 'adminDeleteExam') {
       await turso.execute({ sql: "DELETE FROM Exams WHERE ExamID = ?", args: [args[0]] });
-      return NextResponse.json({ status: 'success', msg: 'Jadwal dihapus!' });
+      return NextResponse.json({ status: 'success', msg: 'Jadwal/Survey dihapus!' });
     }
 
     if (action === 'getExamQuestions' || action === 'getSiswaSoal') {
@@ -140,7 +136,7 @@ export async function POST(req) {
       } else {
         await turso.execute({ sql: "INSERT INTO Questions (QID, ExamID, Tipe, Pertanyaan, Options, Key, Skor, Nomor, PembuatID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", args: [id, eid, d.type, d.text, JSON.stringify(d.options), JSON.stringify(d.key), d.score, d.num, userId] });
       }
-      return NextResponse.json({ status: 'success', id: id, msg: 'Soal tersimpan!' });
+      return NextResponse.json({ status: 'success', id: id, msg: 'Soal/Pernyataan tersimpan!' });
     }
 
     if (action === 'adminDeleteQuestion') {
@@ -158,21 +154,27 @@ export async function POST(req) {
     }
 
     // ==========================================
-    // MANAJEMEN SURVEI
+    // LOGIKA PENYAMBUNGAN SURVEI DENGAN TKA
     // ==========================================
     if (action === 'adminSaveSurvey') {
       const d = args[0]; const id = d.id || ('SRV' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
       if (cek.rows.length > 0) {
-          await turso.execute({ sql: "UPDATE Exams SET Judul=?, TargetKelas=?, ShowStats=? WHERE ExamID=?", args: [d.judul, d.desc, d.status, id] });
+          // Token digunakan untuk menyimpan ExamID TKA yang terhubung
+          await turso.execute({ sql: "UPDATE Exams SET Judul=?, TargetKelas=?, ShowStats=?, Token=? WHERE ExamID=?", args: [d.judul, d.desc, d.status, d.linkedExam, id] });
       } else {
-          await turso.execute({ sql: "INSERT INTO Exams (ExamID, Judul, Mapel, TargetKelas, Durasi, Token, StartDate, EndDate, LimitTries, ShowStats, RandomQ, AllowDownloadQ, AllowDownloadR, PembuatID) VALUES (?, ?, 'SURVEY', ?, 0, '', '', '', 1, ?, 'No', 'No', 'No', ?)", args: [id, d.judul, d.desc, d.status, d.userId] });
+          await turso.execute({ sql: "INSERT INTO Exams (ExamID, Judul, Mapel, TargetKelas, Durasi, Token, StartDate, EndDate, LimitTries, ShowStats, RandomQ, AllowDownloadQ, AllowDownloadR, PembuatID) VALUES (?, ?, 'SURVEY', ?, 0, ?, '', '', 1, ?, 'No', 'No', 'No', ?)", args: [id, d.judul, d.desc, d.linkedExam, d.status, d.userId] });
       }
-      return NextResponse.json({ status: 'success', msg: 'Survey disimpan!' });
+      return NextResponse.json({ status: 'success', msg: 'Survey ditautkan & disimpan!' });
     }
 
     if (action === 'checkActiveSurvey') {
-        const srv = await turso.execute("SELECT * FROM Exams WHERE Mapel='SURVEY' AND ShowStats='Aktif' LIMIT 1");
+        const finishedExamId = args[0]; 
+        // Mencari survey yang terhubung langsung dengan ID ujian TKA yang baru saja diselesaikan
+        const srv = await turso.execute({
+            sql: "SELECT * FROM Exams WHERE Mapel='SURVEY' AND Token=? AND ShowStats='Aktif' LIMIT 1",
+            args: [finishedExamId]
+        });
         if(srv.rows.length > 0) {
             const qs = await turso.execute({ sql: "SELECT * FROM Questions WHERE ExamID = ?", args: [srv.rows[0].ExamID] });
             return NextResponse.json({ status: 'success', data: { header: srv.rows[0], qs: qs.rows } });
@@ -189,9 +191,6 @@ export async function POST(req) {
         return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
     }
 
-    // ==========================================
-    // EXECUSI UJIAN & SUBMIT SKORING 100 PARSIAL
-    // ==========================================
     if (action === 'getExamPack') {
       const eid = args[0]; const uid = args[1];
       const history = await turso.execute({ sql: "SELECT * FROM Results WHERE ExamID=? AND SiswaID=?", args: [eid, uid]});
@@ -258,7 +257,6 @@ export async function POST(req) {
           }
        });
 
-       // Konversi ke basis nilai 100
        let finalScore100 = maxPossibleTotalScore > 0 ? (rawTotalScore / maxPossibleTotalScore) * 100 : 0;
        finalScore100 = Math.round(finalScore100 * 100) / 100;
 
