@@ -103,7 +103,6 @@
     </div>
 </div>
 
-<!-- TAMPILAN UJIAN MENYESUAIKAN GAMBAR 4 -->
 <div id="view-exam" class="hidden">
     <div class="exam-header" style="background-color: #1e3a8a; color: white;">
         <div class="d-flex align-items-center">
@@ -111,7 +110,7 @@
             <div class="d-none d-md-block"><h6 class="fw-bold m-0">Aplikasi CBT Ujian</h6></div>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <h6 class="fw-bold m-0" id="do-exam-title">wanto</h6>
+            <h6 class="fw-bold m-0" id="do-exam-title">User</h6>
         </div>
     </div>
     
@@ -242,6 +241,14 @@
     </div>
 </div>
 
+<!-- ============================================== -->
+<!-- SCRIPT LIBRARIES (BAGIAN PENTING YANG HILANG)  -->
+<!-- ============================================== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+
 <script>
 // ==========================================
 // ADAPTOR VERCEL NEXT.JS (VERSI FINAL & STABIL)
@@ -300,11 +307,50 @@ const maxViolations = 3;
 let isExamFinished = false;
 let violationLock = false;
 
+// KEMBALIKAN KONFIGURASI SUMMERNOTE MATEMATIKA YANG TERHAPUS
+const MathButton = function (context) {
+    const ui = $.summernote.ui;
+    const button = ui.button({
+        contents: '<i class="fas fa-square-root-alt"></i> Rumus',
+        tooltip: 'Tambahkan Rumus Matematika (LaTeX)',
+        click: function () {
+            Swal.fire({
+                title: 'Editor Rumus (LaTeX)',
+                html: `<div class="text-start small mb-2 text-muted">Pilih template cepat atau ketik format LaTeX secara manual:</div>
+                       <div class="d-flex flex-wrap gap-1 mb-3">
+                         <button class="btn btn-sm btn-outline-secondary" onclick="$('#swal-math-input').val($('#swal-math-input').val() + '\\\\frac{a}{b}')">Pecahan (a/b)</button>
+                         <button class="btn btn-sm btn-outline-secondary" onclick="$('#swal-math-input').val($('#swal-math-input').val() + 'x^{2}')">Pangkat</button>
+                         <button class="btn btn-sm btn-outline-secondary" onclick="$('#swal-math-input').val($('#swal-math-input').val() + '\\\\sqrt{x}')">Akar</button>
+                         <button class="btn btn-sm btn-outline-secondary" onclick="$('#swal-math-input').val($('#swal-math-input').val() + '\\\\sum')">Sigma</button>
+                       </div>
+                       <textarea id="swal-math-input" class="form-control font-monospace" rows="3" placeholder="Ketik rumus LaTeX di sini..."></textarea>`,
+                showCancelButton: true,
+                confirmButtonText: 'Sisipkan Rumus',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const mathText = $('#swal-math-input').val();
+                    if(mathText) context.invoke('editor.insertText', ` $$ ${mathText} $$ `);
+                }
+            });
+        }
+    });
+    return button.render();
+}
+const snConfig = { 
+    height: 180, 
+    toolbar: [
+        ['style', ['bold', 'italic', 'underline', 'clear']], 
+        ['para', ['ul', 'ol']], 
+        ['insert', ['picture', 'table', 'link', 'math']]
+    ],
+    buttons: { math: MathButton }
+};
+
 $(document).ready(() => {
     const savedUser = localStorage.getItem('cbt_user');
     if(!savedUser) { window.location.href = '/'; return; }
     user = JSON.parse(savedUser);
-    $('#logo-container img').attr('src', user.LogoUrl || 'https://via.placeholder.com/100');
     initDash();
     checkResumeExam();
 });
@@ -450,7 +496,6 @@ function renderUsers(users) {
     $('#content-area').html(h);
 }
 
-// UPDATE RENDER REKAP AGAR GURU TIDAK BISA HAPUS NILAI
 function renderRecapTable() {
     const uniqueKelas = [...new Set(recapAllData.map(item => item.KelasSiswa))].sort();
     const uniqueUjian = [...new Set(recapAllData.map(item => item.JudulUjian))].sort();
@@ -539,7 +584,6 @@ function renderAdministrasi() {
     $('#content-area').html(h);
 }
 
-// UPDATE RENDER CONTENT AGAR GURU TERBATAS HAKNYA & SISWA BISA REQUEST HAPUS NILAI
 function renderContent(page) {
     const area = $('#content-area'); let h = '';
     const isGuru = String(user.Role).trim().toLowerCase() === 'guru';
@@ -701,7 +745,6 @@ function loadQList() {
         let html = ''; lastQuestionNum = 0; currentQuestionsData = qs || [];
         let topActions = `
         <div class="d-flex justify-content-end mb-3 gap-2 flex-wrap">
-            <button class="btn btn-outline-info shadow-sm" onclick="generateQuestionExcelTemplate()"><i class="fas fa-download"></i> Template Excel</button>
             <label class="btn btn-primary shadow-sm m-0"><i class="fas fa-upload"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadQuestionsExcel(event)"></label>
             <button class="btn btn-info text-white shadow-sm" onclick="previewAllQ()"><i class="fas fa-eye me-1"></i> Preview Semua</button>
             <button class="btn btn-primary shadow-sm" onclick="downloadAllQ()"><i class="fas fa-download me-1"></i> Download Ujian</button>
@@ -745,16 +788,6 @@ function previewAllQ() {
         $('body').append(`<div class="modal fade" id="modalPreviewQ" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title fw-bold"><i class="fas fa-desktop me-2"></i> Preview Seluruh Soal</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light" id="preview-q-body"></div></div></div></div>`);
     }
     $('#preview-q-body').html(htmlContent); $('#modalPreviewQ').modal('show'); applyMathJax();
-}
-
-// ---------------- EXCEL UPLOAD FOR QUESTIONS ----------------
-function generateQuestionExcelTemplate() {
-    const ws_data = [
-        ["Nomor", "Tipe", "Skor", "Pertanyaan", "Opsi (Pisahkan dgn |)", "Kunci (Pisahkan dgn |)"],
-        [1, "PGS", 10, "Apa ibukota Indonesia?", "Jakarta|Bandung|Kota Surabaya|Bali", "Jakarta"]
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data); const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "TemplateSoal"); XLSX.writeFile(wb, "Template_Upload_Soal.xlsx");
 }
 
 function downloadAllQ() {
