@@ -6,9 +6,13 @@ export async function POST(req) {
   try {
     const { action, args } = await req.json();
 
+    // ==========================================
+    // 1. DASHBOARD & MANAJEMEN USER (DENGAN FILTER GURU)
+    // ==========================================
     if (action === 'getDashboardData') {
       const [role, userId, kelas, sekolah] = args;
       let exams, users;
+      
       if (role === 'guru') {
         exams = await turso.execute({ sql: "SELECT * FROM Exams WHERE PembuatID = ?", args: [userId] });
         users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
@@ -17,10 +21,16 @@ export async function POST(req) {
         users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
       }
       
-      let output = { logo: 'https://lh3.googleusercontent.com/d/1OWPGumIzn-RRd3FfrMmYzPt6ZGOnNZpY' };
+      // Menggunakan tautan logo KKGMI terbaru
+      let output = { logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' };
+      
       if (role === 'admin' || role === 'guru') {
         output.exams = exams.rows;
-        output.stats = { totalSiswa: users.rows.length, totalUjian: exams.rows.length, activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length };
+        output.stats = { 
+            totalSiswa: users.rows.length, 
+            totalUjian: exams.rows.length, 
+            activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length 
+        };
       } else if (role === 'siswa') {
         output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
         const history = await turso.execute({ 
@@ -42,7 +52,7 @@ export async function POST(req) {
         exams = await turso.execute("SELECT * FROM Exams");
         users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
       }
-      return NextResponse.json({ status: 'success', exams: exams.rows, users: users.rows, logo: 'https://lh3.googleusercontent.com/d/1OWPGumIzn-RRd3FfrMmYzPt6ZGOnNZpY' });
+      return NextResponse.json({ status: 'success', exams: exams.rows, users: users.rows, logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' });
     }
 
     if (action === 'getUserList') {
@@ -69,6 +79,9 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: 'Data User berhasil disimpan!' });
     }
 
+    // ==========================================
+    // 2. MANAJEMEN UJIAN & BANK SOAL
+    // ==========================================
     if (action === 'adminSaveExam') {
       const d = args[0]; const id = d.examId || ('EX' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
@@ -87,6 +100,7 @@ export async function POST(req) {
 
     if (action === 'getExamQuestions' || action === 'getSiswaSoal') {
       const qs = await turso.execute({ sql: "SELECT * FROM Questions WHERE ExamID = ?", args: [args[0]] });
+      if (action === 'getSiswaSoal') return NextResponse.json({ status: 'success', data: qs.rows });
       return NextResponse.json(qs.rows);
     }
 
@@ -115,6 +129,9 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: `${qArr.length} soal diupload!` });
     }
 
+    // ==========================================
+    // 3. EXECUSI UJIAN & SUBMIT
+    // ==========================================
     if (action === 'getExamPack') {
       const eid = args[0]; const uid = args[1];
       const history = await turso.execute({ sql: "SELECT * FROM Results WHERE ExamID=? AND SiswaID=?", args: [eid, uid]});
@@ -142,6 +159,9 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: totalScore } });
     }
 
+    // ==========================================
+    // 4. REKAP NILAI, KOREKSI & SISWA GET HASIL
+    // ==========================================
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
       let query = `
@@ -190,6 +210,7 @@ export async function POST(req) {
     }
 
     if (action === 'sysResetCache' || action === 'updateClientProgress' || action === 'autosaveAnswer') return NextResponse.json({ status: 'success' });
+    
     return NextResponse.json({ status: 'success', data: [] });
   } catch (error) {
     console.error("API Action Error:", error);
