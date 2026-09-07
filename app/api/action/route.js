@@ -11,10 +11,10 @@ export async function POST(req) {
       let exams, users;
       
       if (role === 'guru') {
-        exams = await turso.execute({ sql: "SELECT * FROM Exams WHERE PembuatID = ?", args: [userId] });
+        exams = await turso.execute({ sql: "SELECT * FROM Exams WHERE PembuatID = ? AND Mapel != 'SURVEY'", args: [userId] });
         users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
       } else {
-        exams = await turso.execute("SELECT * FROM Exams");
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
         users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
       }
       
@@ -27,10 +27,42 @@ export async function POST(req) {
             totalUjian: exams.rows.length, 
             activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length 
         };
+
+        const schoolRankQuery = await turso.execute(`
+            SELECT u.Sekolah, AVG(r.TotalNilai) as RataRata 
+            FROM Results r 
+            JOIN Users u ON r.SiswaID = u.ID 
+            JOIN Exams e ON r.ExamID = e.ExamID
+            WHERE e.Mapel != 'SURVEY'
+            GROUP BY u.Sekolah 
+            ORDER BY RataRata DESC
+        `);
+        output.schoolRanks = schoolRankQuery.rows;
+
+        if (role === 'guru') {
+            const studentRankQuery = await turso.execute({
+                sql: `SELECT u.Nama, u.Kelas, e.Mapel, AVG(r.TotalNilai) as RataRata 
+                      FROM Results r 
+                      JOIN Users u ON r.SiswaID = u.ID 
+                      JOIN Exams e ON r.ExamID = e.ExamID 
+                      WHERE u.Sekolah = ? AND e.Mapel != 'SURVEY'
+                      GROUP BY u.ID, e.Mapel 
+                      ORDER BY e.Mapel ASC, RataRata DESC`,
+                args: [sekolah]
+            });
+            output.studentRanks = studentRankQuery.rows;
+        }
+        
+        // Data Survei Khusus Admin
+        if (role === 'admin') {
+            const surveys = await turso.execute("SELECT * FROM Exams WHERE Mapel = 'SURVEY'");
+            output.surveys = surveys.rows;
+        }
+
       } else if (role === 'siswa') {
         output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
         const history = await turso.execute({ 
-          sql: "SELECT r.ResultID, r.ExamID, r.WaktuSubmit, r.TotalNilai as Nilai, e.Judul, e.AllowDownloadR, e.AllowDownloadQ, r.Pelanggaran FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.SiswaID = ?", 
+          sql: "SELECT r.ResultID, r.ExamID, r.WaktuSubmit, r.TotalNilai as Nilai, e.Judul, e.AllowDownloadR, e.AllowDownloadQ, e.ShowStats, r.Pelanggaran FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.SiswaID = ? AND e.Mapel != 'SURVEY'", 
           args: [userId] 
         });
         output.history = history.rows;
@@ -75,6 +107,9 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: 'Data User berhasil disimpan!' });
     }
 
+    // ==========================================
+    // MANAJEMEN UJIAN & BANK SOAL
+    // ==========================================
     if (action === 'adminSaveExam') {
       const d = args[0]; const id = d.examId || ('EX' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
@@ -88,7 +123,7 @@ export async function POST(req) {
 
     if (action === 'adminDeleteExam') {
       await turso.execute({ sql: "DELETE FROM Exams WHERE ExamID = ?", args: [args[0]] });
-      return NextResponse.json({ status: 'success', msg: 'Jadwal Ujian berhasil dihapus!' });
+      return NextResponse.json({ status: 'success', msg: 'Jadwal dihapus!' });
     }
 
     if (action === 'getExamQuestions' || action === 'getSiswaSoal') {
@@ -122,6 +157,41 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: `${qArr.length} soal diupload!` });
     }
 
+    // ==========================================
+    // MANAJEMEN SURVEI
+    // ==========================================
+    if (action === 'adminSaveSurvey') {
+      const d = args[0]; const id = d.id || ('SRV' + Date.now());
+      const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
+      if (cek.rows.length > 0) {
+          await turso.execute({ sql: "UPDATE Exams SET Judul=?, TargetKelas=?, ShowStats=? WHERE ExamID=?", args: [d.judul, d.desc, d.status, id] });
+      } else {
+          await turso.execute({ sql: "INSERT INTO Exams (ExamID, Judul, Mapel, TargetKelas, Durasi, Token, StartDate, EndDate, LimitTries, ShowStats, RandomQ, AllowDownloadQ, AllowDownloadR, PembuatID) VALUES (?, ?, 'SURVEY', ?, 0, '', '', '', 1, ?, 'No', 'No', 'No', ?)", args: [id, d.judul, d.desc, d.status, d.userId] });
+      }
+      return NextResponse.json({ status: 'success', msg: 'Survey disimpan!' });
+    }
+
+    if (action === 'checkActiveSurvey') {
+        const srv = await turso.execute("SELECT * FROM Exams WHERE Mapel='SURVEY' AND ShowStats='Aktif' LIMIT 1");
+        if(srv.rows.length > 0) {
+            const qs = await turso.execute({ sql: "SELECT * FROM Questions WHERE ExamID = ?", args: [srv.rows[0].ExamID] });
+            return NextResponse.json({ status: 'success', data: { header: srv.rows[0], qs: qs.rows } });
+        }
+        return NextResponse.json({ status: 'empty' });
+    }
+
+    if (action === 'submitSurveyResponse') {
+        const uid = args[0]; const sid = args[1]; const answers = args[2];
+        await turso.execute({ 
+           sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, 0, ?, 'Survey Response')", 
+           args: ['SRES' + Date.now(), uid, sid, JSON.stringify(answers)] 
+        });
+        return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
+    }
+
+    // ==========================================
+    // EXECUSI UJIAN & SUBMIT SKORING 100 PARSIAL
+    // ==========================================
     if (action === 'getExamPack') {
       const eid = args[0]; const uid = args[1];
       const history = await turso.execute({ sql: "SELECT * FROM Results WHERE ExamID=? AND SiswaID=?", args: [eid, uid]});
@@ -132,9 +202,6 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', data: cleanQ, duration: examInfo.rows[0].Durasi, judul: examInfo.rows[0].Judul, token: examInfo.rows[0].Token });
     }
 
-    // ==========================================
-    // UPDATE ALGORITMA PENILAIAN SKALA 100 & PARSIAL
-    // ==========================================
     if (action === 'submitExam') {
        const uid = args[0]; const eid = args[1]; const answers = args[2]; const violations = args[3];
        
@@ -143,8 +210,6 @@ export async function POST(req) {
        let maxPossibleTotalScore = 0;
 
        const qs = await turso.execute({ sql: "SELECT * FROM Questions WHERE ExamID=?", args:[eid] });
-       
-       // Hitung total skor maksimum yang bisa diraih dari seluruh soal ujian ini
        qs.rows.forEach(q => { maxPossibleTotalScore += Number(q.Skor) || 0; });
 
        answers.forEach(ans => {
@@ -155,7 +220,6 @@ export async function POST(req) {
              const maxSkor = Number(q.Skor) || 0;
 
              if (q.Tipe === 'PGK') {
-                 // PG Kompleks (Jawaban Multi): Penilaian Seperbagian dengan penalti jawaban salah
                  if (Array.isArray(ans.answer)) {
                      const correct_selected = ans.answer.filter(val => keys.includes(val)).length;
                      const wrong_selected = ans.answer.filter(val => !keys.includes(val)).length;
@@ -163,12 +227,11 @@ export async function POST(req) {
                      
                      if (total_correct_keys > 0) {
                          let partial = (correct_selected - wrong_selected) / total_correct_keys;
-                         if (partial < 0) partial = 0; // Batas bawah tidak minus
+                         if (partial < 0) partial = 0; 
                          scoreEarned = partial * maxSkor;
                      }
                  }
              } else if (q.Tipe === 'PGKK') {
-                 // Benar-Salah: Penilaian Seperbagian per baris
                  if (Array.isArray(ans.answer)) {
                      let correct_match = 0;
                      const total_statements = keys.length;
@@ -180,10 +243,8 @@ export async function POST(req) {
                      }
                  }
              } else if (q.Tipe === 'PGS') {
-                 // Pilihan Ganda Tunggal
                  if (keys.includes(ans.answer)) scoreEarned = maxSkor;
              } else {
-                 // Tipe Menjodohkan dan Uraian otomatis/persis
                  if (Array.isArray(ans.answer)) {
                      if (JSON.stringify(ans.answer) === JSON.stringify(keys)) scoreEarned = maxSkor;
                  } else {
@@ -191,14 +252,13 @@ export async function POST(req) {
                  }
              }
              
-             // Membulatkan 2 angka di belakang koma untuk skor log detail
              scoreEarned = Math.round(scoreEarned * 100) / 100;
              rawTotalScore += scoreEarned;
              detailLog.push({ i: q.Nomor, s: scoreEarned, m: maxSkor, t: q.Tipe, a: ans.answer });
           }
        });
 
-       // Konversi skor ke skala final maksimal 100
+       // Konversi ke basis nilai 100
        let finalScore100 = maxPossibleTotalScore > 0 ? (rawTotalScore / maxPossibleTotalScore) * 100 : 0;
        finalScore100 = Math.round(finalScore100 * 100) / 100;
 
@@ -219,8 +279,9 @@ export async function POST(req) {
         FROM Results r
         LEFT JOIN Users u ON r.SiswaID = u.ID
         LEFT JOIN Exams e ON r.ExamID = e.ExamID
+        WHERE e.Mapel != 'SURVEY'
       `;
-      if (role === 'guru') query += ` WHERE e.PembuatID = '${userId}' AND u.Sekolah = '${sekolah}'`;
+      if (role === 'guru') query += ` AND e.PembuatID = '${userId}' AND u.Sekolah = '${sekolah}'`;
       
       const results = await turso.execute(query);
       return NextResponse.json({ status: 'success', data: results.rows });
