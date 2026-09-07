@@ -21,6 +21,7 @@
         .hidden { display: none !important; }
         .q-content img, .opt-content img, .survey-stimulus img { max-width: 100% !important; height: auto !important; border-radius: 6px; margin: 5px 0; }
         
+        /* Dashboard & Sidebar Styling */
         .wrapper { display: flex; width: 100%; align-items: stretch; position: relative; }
         #sidebar { min-width: 260px; max-width: 260px; background: #064e3b; color: #fff; min-height: 100vh; position: fixed; z-index: 1050; transition: all 0.3s; left: 0; top: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
         #sidebar.active { left: -260px; }
@@ -28,6 +29,7 @@
         #sidebar ul li a { padding: 15px 25px; display: block; color: #e2e8f0; text-decoration: none; border-left: 4px solid transparent; cursor: pointer; transition: 0.2s; }
         #sidebar ul li a:hover, #sidebar ul li a.active { background: rgba(212, 175, 55, 0.1); color: #fff; border-left-color: var(--secondary); }
         
+        /* Exam Layout */
         #view-exam { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 9999; background: #f8fafc; overflow: hidden; display: flex; flex-direction: column; }
         .exam-header { flex-shrink: 0; height: 60px; background: #064e3b; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .exam-container-split { flex-grow: 1; display: flex; gap: 20px; padding: 20px; overflow: hidden; }
@@ -278,21 +280,6 @@
     </div>
 </div>
 
-<!-- MODAL PREVIEW HTML (ANTI POPUP BLOCKER) -->
-<div class="modal fade" id="modalPreviewQ" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title fw-bold"><i class="fas fa-desktop me-2"></i> Preview Kumpulan Soal</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body bg-light" id="preview-q-body" style="padding: 30px;">
-                <!-- Konten Di Render Disini -->
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade" id="modalUser" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
@@ -527,38 +514,49 @@ function renderUsers(users) {
     h += `</tbody></table></div></div></div>`; $('#content-area').html(h);
 }
 
-// METODE BLOB PDF FIX
+// -----------------------------------------------------
+// KOP SURAT STANDAR KKGMI
+// -----------------------------------------------------
+function getKopHTML(title) {
+    return `
+    <div class="kop" style="display: flex; align-items: center; justify-content: center; border-bottom: 4px solid #064e3b; padding-bottom: 20px; margin-bottom: 30px; position: relative; text-align: center;">
+        <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo KKGMI" style="width: 100px; height: 100px; position: absolute; left: 10px; top: 0;">
+        <div style="width: 100%; padding-left: 90px;">
+            <h2 style="margin: 0; font-size: 26px; color: #064e3b; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">KELOMPOK KERJA GURU MADRASAH IBTIDAIYAH</h2>
+            <h3 style="margin: 5px 0; font-size: 20px; color: #1e293b; font-weight: bold; letter-spacing: 2px;">(KKGMI) KOTA SURABAYA 10</h3>
+            <p style="margin: 0; color: #64748b; font-size: 14px; font-style: italic;">Aplikasi Computer Based Test (CBT) Inovasi - ${title}</p>
+        </div>
+    </div>`;
+}
+
+// FUNGSI BLOB DOWNLOAD HTML/PDF BEBAS POPUP BLOCKER
 function downloadHTMLToPDF(filename, htmlContent) {
     const html = `<!DOCTYPE html><html lang="id">
-    <head><meta charset="UTF-8"><title>${filename}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
-    <style>
-        body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
-        .q-box { border-bottom: 2px dashed #e2e8f0; padding-bottom: 25px; margin-bottom: 25px; }
-        .kop { display: flex; align-items: center; border-bottom: 3px solid #064e3b; padding-bottom: 15px; margin-bottom: 30px; }
-        .kop img { width: 70px; height: 70px; margin-right: 20px; }
-        .kop h2 { margin: 0; font-size: 24px; color: #064e3b; }
-        .kop p { margin: 0; color: #64748b; }
-        @media print {
-            body { padding: 0; background-color: #fff; }
-            .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
-            .no-print { display: none; }
-            .q-box { page-break-inside: avoid; }
-        }
-    </style></head>
+    <head>
+        <meta charset="UTF-8">
+        <title>${filename}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
+        <style>
+            body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b; }
+            .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
+            .q-box { border-bottom: 2px dashed #e2e8f0; padding-bottom: 25px; margin-bottom: 25px; }
+            @media print {
+                body { padding: 0; background-color: #fff; }
+                .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
+                .no-print { display: none; }
+                .q-box { page-break-inside: avoid; border-bottom: 1px solid #ccc; }
+            }
+        </style>
+    </head>
     <body>
         <div class="no-print" style="text-align: right; margin-bottom: 20px;">
             <button onclick="window.print()" style="padding: 12px 25px; background: #0f5132; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Poppins', sans-serif;">Cetak / Simpan PDF</button>
         </div>
         <div class="container">
-            <div class="kop">
-                <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo">
-                <div><h2>DOKUMEN UJIAN KKGMI SURABAYA 10</h2><p>${filename}</p></div>
-            </div>
+            ${getKopHTML(filename.replace(/_/g, ' '))}
             ${htmlContent}
         </div>
         <script>
@@ -569,8 +567,15 @@ function downloadHTMLToPDF(filename, htmlContent) {
         <\/script>
     </body></html>`;
     
-    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${filename}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); 
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); 
+    a.href = url; 
+    a.download = `${filename}.html`; 
+    document.body.appendChild(a); 
+    a.click(); 
+    document.body.removeChild(a); 
+    URL.revokeObjectURL(url);
 }
 
 function printFilteredRecap() {
@@ -578,8 +583,8 @@ function printFilteredRecap() {
   const fUjian = $('#filter-ujian').val() || 'Semua Ujian'; const fKelas = $('#filter-kelas').val() || 'Semua Kelas';
   let namaPengawas = window.currentFilteredData.length > 0 ? window.currentFilteredData[0].PembuatNama : user.Nama;
   
-  let content = `<div style="text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:20px;">
-      <h3 style="margin:0; color:#0f5132;">REKAPITULASI HASIL UJIAN</h3>
+  let content = `<div style="text-align:center; padding-bottom:10px; margin-bottom:20px;">
+      <h3 style="margin:0; color:#0f5132; text-decoration: underline;">REKAPITULASI HASIL UJIAN</h3>
       <p style="margin:5px 0;"><strong>Ujian/Materi:</strong> ${fUjian} | <strong>Kelas:</strong> ${fKelas}</p>
   </div>
   <table style="width:100%; border-collapse:collapse; margin-bottom:30px; font-size:14px;" border="1">
@@ -594,7 +599,7 @@ function printFilteredRecap() {
       <p style="margin-bottom:70px;">Guru Pengampu / Pengawas</p>
       <p><strong>${namaPengawas}</strong></p>
   </div>`;
-  downloadHTMLToPDF('Rekap_Nilai', content);
+  downloadHTMLToPDF('Rekap_Nilai_Ujian', content);
 }
 
 function printRecap(rid) {
@@ -632,49 +637,9 @@ function printRecap(rid) {
       <p><strong>${namaPengawas}</strong></p>
   </div>
   `;
-  downloadHTMLToPDF(`Hasil_Ujian_${d.nama}`, content);
+  downloadHTMLToPDF(`Hasil_Ujian_${d.nama.replace(/\s+/g, '_')}`, content);
 }
 
-
-function renderRecapTable() {
-    const uniqueKelas = [...new Set(recapAllData.map(item => item.KelasSiswa))].sort();
-    const uniqueUjian = [...new Set(recapAllData.map(item => item.JudulUjian))].sort();
-    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
-    let h = `
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold mb-0 text-primary"><i class="fas fa-chart-bar me-2"></i>Rekapitulasi Nilai Ujian</h5>
-        <button class="btn btn-success shadow-sm rounded-pill px-4" onclick="printFilteredRecap()"><i class="fas fa-print me-2"></i>Cetak Laporan Rekap</button>
-    </div>
-    <div class="row g-2 mb-3 bg-white p-3 rounded-4 shadow-sm border border-light">
-        <div class="col-md-4"><select id="filter-ujian" class="form-select border-0 bg-light rounded-pill px-3" onchange="applyFilter()"><option value="">Semua Ujian</option>${uniqueUjian.map(u => `<option value="${u}">${u}</option>`).join('')}</select></div>
-        <div class="col-md-4"><select id="filter-kelas" class="form-select border-0 bg-light rounded-pill px-3" onchange="applyFilter()"><option value="">Semua Kelas</option>${uniqueKelas.map(k => `<option value="${k}">${k}</option>`).join('')}</select></div>
-        <div class="col-md-4"><input type="text" id="filter-search" class="form-control border-0 bg-light rounded-pill px-3" placeholder="Cari Nama Siswa..." onkeyup="applyFilter()"></div>
-    </div>
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden"><div class="card-body p-0"><div class="table-responsive">
-    <table class="table table-hover align-middle mb-0" id="tbl-rekap"><thead class="table-light">
-    <tr><th>Waktu Submit</th><th>Nama Siswa</th><th>Kelas</th><th>Mata Pelajaran</th><th>Nilai Akhir (Skala 100)</th><th>Aksi</th></tr></thead><tbody id="tbl-rekap-body"></tbody></table></div></div></div>`;
-    $('#content-area').html(h); applyFilter();
-}
-function applyFilter() {
-  const fUjian = $('#filter-ujian').val(); const fKelas = $('#filter-kelas').val(); const fSearch = $('#filter-search').val().toLowerCase();
-  const tbody = $('#tbl-rekap-body'); tbody.empty(); recapDataStore = {};
-  const filtered = recapAllData.filter(item => { if(fUjian && item.JudulUjian !== fUjian) return false; if(fKelas && item.KelasSiswa !== fKelas) return false; if(fSearch && !item.NamaSiswa.toLowerCase().includes(fSearch)) return false; return true; });
-  window.currentFilteredData = filtered;
-  if(filtered.length === 0) { tbody.html('<tr><td colspan="6" class="text-center p-4 text-muted">Tidak ada data hasil ujian ditemukan.</td></tr>'); return; }
-  
-  const isGuru = String(user.Role).trim().toLowerCase() === 'guru';
-
-  filtered.forEach(r => {
-    recapDataStore[r.ResultID] = { detail: r.Detail, nama: r.NamaSiswa, ujian: r.JudulUjian, nilai: r.TotalNilai, pembuat: r.PembuatNama };
-    let btnHapus = !isGuru ? `<button class="btn btn-sm btn-outline-danger mt-1 rounded-pill px-3" onclick="deleteResult('${r.ResultID}')" title="Hapus"><i class="fas fa-trash me-1"></i>Hapus</button>` : '';
-    let indikatorTrobel = (r.Pelanggaran === 'Meminta Reset (Trobel)') ? `<span class="badge bg-danger ms-2 shadow-sm"><i class="fas fa-exclamation-circle"></i> Meminta Reset</span>` : '';
-
-    tbody.append(`<tr><td class="small text-muted">${r.WaktuSubmit}</td><td><div class="fw-bold text-dark">${r.NamaSiswa} ${indikatorTrobel}</div></td><td>${r.KelasSiswa}</td><td>${r.Mapel} <br><small class="text-muted">${r.JudulUjian}</small></td><td><span class="badge bg-success fs-6 shadow-sm px-3 rounded-pill">${r.TotalNilai}</span></td><td>
-    <button class="btn btn-sm btn-outline-info me-1 mt-1 rounded-pill px-3" onclick="openKoreksi('${r.ResultID}')" title="Koreksi"><i class="fas fa-edit me-1"></i>Koreksi</button>
-    <button class="btn btn-sm btn-outline-success me-1 mt-1 rounded-pill px-3" onclick="printRecap('${r.ResultID}')" title="Cetak PDF"><i class="fas fa-file-pdf me-1"></i>PDF</button>
-    ${btnHapus}</td></tr>`);
-  });
-}
 
 function renderAdministrasi() {
     const uniqueKelas = [...new Set(gAdminData.users.map(u => String(u.Kelas).trim()))].filter(k => k).sort();
@@ -722,14 +687,155 @@ function renderAdministrasi() {
     $('#content-area').html(h);
 }
 
+// ---------------- CETAK ADMINISTRASI DENGAN KOP ----------------
+function printKartuLogin() {
+    const kls = $('#adm-kls-kartu').val();
+    let usersToPrint = gAdminData.users;
+    if (kls !== 'ALL') usersToPrint = usersToPrint.filter(u => u.Kelas === kls);
+    if (usersToPrint.length === 0) return Swal.fire('Kosong', 'Tidak ada data siswa untuk kelas tersebut.', 'info');
+    let html = `<html><head><title>Cetak Kartu Login</title><style>
+        body { font-family: 'Times New Roman', Times, serif; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 15px; }
+        .card { border: 2px dashed #333; padding: 15px; border-radius: 8px; page-break-inside: avoid; }
+        table { width: 100%; font-size: 14px; }
+        td { padding: 4px 0; }
+        @media print { .no-print { display: none; } }
+    </style></head><body>
+    <div class="no-print" style="margin: 15px; text-align:right;"><button onclick="window.print()" style="padding:10px 20px; font-size:16px; background:#1e3a8a; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak Dokumen</button></div>
+    <div class="grid">`;
+    usersToPrint.forEach(u => {
+        html += `<div class="card">
+            <div style="display:flex; align-items:center; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:10px;">
+                <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo" style="width:50px; height:50px; margin-right:15px;">
+                <div><h3 style="margin:0; font-size:15px; text-transform:uppercase;">KARTU LOGIN CBT KKGMI</h3><p style="margin:0; font-size:11px;">KOTA SURABAYA 10</p></div>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <div style="flex-shrink:0;">
+                    <img src="${u.Foto || 'https://via.placeholder.com/80'}" style="width:80px; height:100px; object-fit:cover; border:2px solid #ccc; border-radius:4px;">
+                </div>
+                <table style="flex-grow:1;">
+                    <tr><td width="30%"><strong>Nama</strong></td><td width="5%">:</td><td>${u.Nama}</td></tr>
+                    <tr><td><strong>Kelas</strong></td><td>:</td><td>${u.Kelas}</td></tr>
+                    <tr><td><strong>Tgl Lahir</strong></td><td>:</td><td>${u.TglLahir || '-'}</td></tr>
+                    <tr><td><strong>Username</strong></td><td>:</td><td><strong>${u.Username}</strong></td></tr>
+                    <tr><td><strong>Password</strong></td><td>:</td><td><strong>${u.Password}</strong></td></tr>
+                </table>
+            </div>
+        </div>`;
+    });
+    html += `</div><script>window.onload = function() { window.print(); }<\/script></body></html>`;
+    const win = window.open('', '', 'width=800,height=600'); win.document.write(html); win.document.close();
+}
+function printDaftarHadir() {
+    const examId = $('#adm-exam-hadir').val(); const kls = $('#adm-kls-hadir').val();
+    if(!examId) return Swal.fire('Perhatian', 'Pilih Ujian terlebih dahulu.', 'warning');
+    const exam = gAdminData.exams.find(e => String(e.ExamID) === String(examId));
+    let usersToPrint = gAdminData.users;
+    if (kls !== 'ALL') usersToPrint = usersToPrint.filter(u => u.Kelas === kls);
+    if (usersToPrint.length === 0) return Swal.fire('Kosong', 'Tidak ada data siswa untuk kelas tersebut.', 'info');
+    let html = `<html><head><title>Daftar Hadir Ujian</title><style>
+        body { font-family: 'Times New Roman', Times, serif; padding: 30px; }
+        h3 { text-align: center; text-decoration: underline; margin-bottom: 20px; }
+        .info-table { width: 100%; margin-bottom: 20px; font-size: 14px; }
+        .info-table td { padding: 4px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .data-table th, .data-table td { border: 1px solid #000; padding: 8px; }
+        .data-table th { background: #f0f0f0; text-align: center; }
+        .ttd-box { height: 35px; }
+        @media print { .no-print { display: none; } }
+    </style></head><body>
+    <div class="no-print" style="margin-bottom: 15px; text-align:right;"><button onclick="window.print()" style="padding:10px 20px; font-size:16px; background:#0dcaf0; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak Dokumen</button></div>
+    <div style="display: flex; align-items: center; justify-content: center; border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 20px; text-align: center; position: relative;">
+        <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo" style="width: 80px; height: 80px; position: absolute; left: 10px;">
+        <div><h2 style="margin: 0; font-size: 22px; text-transform: uppercase;">DAFTAR HADIR PESERTA UJIAN</h2><p style="margin: 5px 0 0; font-size: 14px;">KKGMI KOTA SURABAYA 10</p></div>
+    </div>
+    <h3>DAFTAR HADIR PESERTA</h3>
+    <table class="info-table">
+        <tr><td width="15%"><strong>Mata Pelajaran</strong></td><td width="2%">:</td><td width="33%">${exam.Mapel} - ${exam.Judul}</td><td width="15%"><strong>Hari, Tanggal</strong></td><td width="2%">:</td><td>......................................</td></tr>
+        <tr><td><strong>Kelas</strong></td><td>:</td><td>${kls === 'ALL' ? 'Semua Kelas' : kls}</td><td><strong>Waktu</strong></td><td>:</td><td>......................................</td></tr>
+    </table>
+    <table class="data-table">
+        <thead><tr><th width="5%">No</th><th width="15%">Username</th><th width="40%">Nama Peserta</th><th width="25%" colspan="2">Tanda Tangan</th><th width="15%">Ket</th></tr></thead>
+        <tbody>`;
+    usersToPrint.forEach((u, i) => {
+        let ttdCol1 = (i % 2 === 0) ? `${i+1}.` : '';
+        let ttdCol2 = (i % 2 !== 0) ? `${i+1}.` : '';
+        html += `<tr>
+            <td style="text-align:center">${i + 1}</td>
+            <td style="text-align:center">${u.Username}</td>
+            <td>${u.Nama}</td>
+            <td class="ttd-box">${ttdCol1}</td><td class="ttd-box">${ttdCol2}</td>
+            <td></td>
+        </tr>`;
+    });
+    html += `</tbody></table>
+    <div style="margin-top: 50px; text-align: right; padding-right: 50px;">
+        <p>Surabaya, ..................................</p>
+        <p style="margin-bottom: 70px;">Pengawas Ujian,</p>
+        <p><strong>( ......................................... )</strong></p>
+    </div>
+    <script>window.onload = function() { window.print(); }<\/script></body></html>`;
+    const win = window.open('', '', 'width=800,height=600'); win.document.write(html); win.document.close();
+}
+function printBeritaAcara() {
+    const examId = $('#adm-exam-ba').val(); const kls = $('#adm-kls-ba').val();
+    if(!examId) return Swal.fire('Perhatian', 'Pilih Ujian terlebih dahulu.', 'warning');
+    const exam = gAdminData.exams.find(e => String(e.ExamID) === String(examId));
+    
+    let html = `<html><head><title>Berita Acara Ujian</title><style>
+        body { font-family: 'Times New Roman', Times, serif; padding: 40px; line-height: 1.6; }
+        h3 { text-align: center; text-decoration: underline; margin-bottom: 30px; }
+        .content { font-size: 15px; text-align: justify; }
+        .content p { margin-bottom: 15px; }
+        .ttd-section { margin-top: 60px; width: 100%; }
+        .ttd-section table { width: 100%; text-align: center; }
+        @media print { .no-print { display: none; } }
+    </style></head><body>
+    <div class="no-print" style="margin-bottom: 15px; text-align:right;"><button onclick="window.print()" style="padding:10px 20px; font-size:16px; background:#198754; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak Dokumen</button></div>
+    <div style="display: flex; align-items: center; justify-content: center; border-bottom: 3px solid #000; padding-bottom: 15px; margin-bottom: 30px; text-align: center; position: relative;">
+        <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo" style="width: 80px; height: 80px; position: absolute; left: 20px;">
+        <div><h2 style="margin: 0; font-size: 22px; text-transform: uppercase;">PANITIA PELAKSANAAN UJIAN CBT</h2><p style="margin: 5px 0 0; font-size: 14px;">KKGMI KOTA SURABAYA 10</p></div>
+    </div>
+    <h3>BERITA ACARA PELAKSANAAN UJIAN</h3>
+    <div class="content">
+        <p>Pada hari ini .................................. tanggal ........... bulan .............................. tahun .........................., telah diselenggarakan Ujian Berbasis Komputer (CBT) dengan rincian sebagai berikut:</p>
+        <table style="width: 100%; margin-left: 20px; margin-bottom: 15px;">
+            <tr><td width="25%">Mata Pelajaran</td><td width="5%">:</td><td><strong>${exam.Mapel} - ${exam.Judul}</strong></td></tr>
+            <tr><td>Kelas / Ruang</td><td>:</td><td><strong>${kls === 'ALL' ? 'Semua Kelas' : kls}</strong></td></tr>
+            <tr><td>Waktu Pelaksanaan</td><td>:</td><td>Pukul ..................... s.d .....................</td></tr>
+        </table>
+        <p>Dengan jumlah peserta ujian sebagai berikut:</p>
+        <table style="width: 100%; margin-left: 20px; margin-bottom: 20px;">
+            <tr><td width="25%">1. Jumlah Peserta Seharusnya</td><td width="5%">:</td><td>........... Orang</td></tr>
+            <tr><td>2. Jumlah Peserta Hadir</td><td>:</td><td>........... Orang</td></tr>
+            <tr><td>3. Jumlah Peserta Tidak Hadir</td><td>:</td><td>........... Orang</td></tr>
+            <tr><td valign="top">4. Catatan Selama Ujian</td><td valign="top">:</td><td style="border-bottom: 1px dotted #000; height: 30px;"></td></tr>
+            <tr><td></td><td></td><td style="border-bottom: 1px dotted #000; height: 30px;"></td></tr>
+        </table>
+        <p>Demikian Berita Acara ini dibuat dengan sesungguhnya untuk dapat dipergunakan sebagaimana mestinya.</p>
+    </div>
+    <div class="ttd-section">
+        <table>
+            <tr>
+                <td width="50%"></td>
+                <td width="50%">Surabaya, ....................................<br>Pengawas Ujian,</td>
+            </tr>
+            <tr><td height="80"></td><td></td></tr>
+            <tr>
+                <td></td>
+                <td><strong>( .................................................. )</strong></td>
+            </tr>
+        </table>
+    </div>
+    <script>window.onload = function() { window.print(); }<\/script></body></html>`;
+    const win = window.open('', '', 'width=800,height=600'); win.document.write(html); win.document.close();
+}
+
 function renderContent(page) {
     const area = $('#content-area'); let h = '';
     const isGuru = String(user.Role).trim().toLowerCase() === 'guru';
-    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
 
     if (page === 'admin-home') {
-        let rankHtml = '';
-        
         let schoolTable = `<div class="table-responsive"><table class="table table-sm table-hover text-center"><thead><tr class="table-light"><th>Rank</th><th>Sekolah</th><th>Rata-rata CBT</th></tr></thead><tbody>`;
         if(gData.schoolRanks && gData.schoolRanks.length > 0) {
             gData.schoolRanks.forEach((s, i) => {
@@ -846,7 +952,7 @@ function renderContent(page) {
 function laporTrobel(rid) {
     Swal.fire({
         title: 'Ajukan Reset Ujian?',
-        text: 'Jika jawaban Anda terkirim otomatis akibat Error / Trobel, klik ajukan. Guru Anda akan meninjau dan mereset nilai ini agar Anda dapat mengulang.',
+        text: 'Jika jawaban terkirim otomatis akibat Error / Trobel, klik ajukan. Guru Anda akan mereset nilai ini agar Anda dapat mengulang.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: '<i class="fas fa-paper-plane me-1"></i> Ya, Ajukan Reset',
@@ -856,9 +962,7 @@ function laporTrobel(rid) {
         if (r.isConfirmed) {
             showLoad(true);
             google.script.run.withSuccessHandler(res => {
-                showLoad(false);
-                Swal.fire('Berhasil Terkirim', 'Laporan Anda sudah masuk ke dasbor Guru.', 'success');
-                loadPage('siswa-home');
+                showLoad(false); Swal.fire('Berhasil Terkirim', 'Laporan Anda sudah masuk ke dasbor Guru.', 'success'); loadPage('siswa-home');
             }).requestResetResult(rid);
         }
     });
@@ -998,7 +1102,6 @@ function generateQHTML(q) {
     return `<div style="font-family: 'Poppins', Arial, sans-serif; padding:15px 0; margin-bottom:20px;"><div style="background:#0f5132; color:white; display:inline-block; padding:5px 15px; border-radius:15px; font-size:13px; font-weight:bold; margin-bottom:15px;">Soal No. ${q.Nomor||''}</div><div style="margin-bottom:20px; font-size:16px; line-height:1.6; word-wrap: break-word;">${q.Pertanyaan}</div>${inp}</div>`;
 }
 
-// UPDATE FUNGSI PREVIEW SECARA IN-PAGE MODAL AGAR BEBAS POPUP BLOCKER
 function previewAllQ() {
     let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:15px; margin-bottom:15px;">${generateQHTML(q)}</div>`; });
     if(!htmlContent) return Swal.fire('Kosong', 'Belum ada soal untuk dipreview.', 'info');
@@ -1008,13 +1111,10 @@ function previewAllQ() {
     $('#preview-q-body').html(htmlContent); $('#modalPreviewQ').modal('show'); applyMathJax();
 }
 
-// UPDATE FUNGSI DOWNLOAD SOAL LANGSUNG DOWNLOAD FILE HTML TANPA WINDOW.OPEN
 function downloadAllQ() {
     let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
     if(!htmlContent) return Swal.fire('Kosong', 'Belum ada soal untuk didownload.', 'info');
-    const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Arsip Soal</title><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet"><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script><style>body { font-family: 'Poppins', Arial, sans-serif; background-color: #f1f5f9; padding: 40px; margin: 0; display:flex; justify-content:center; } .container { max-width: 800px; width: 100%; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); } img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; } @media print { body{padding:0;} .container{box-shadow:none;} }</style></head><body><div style="text-align:right; margin-bottom:20px;" class="no-print"><button onclick="window.print()" style="padding:10px 20px; background:#0f5132; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak PDF</button></div><div class="container">${htmlContent}</div><script>window.onload = function() { setTimeout(window.print, 1000); }<\/script></body></html>`;
-    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `Arsip_Soal_CBT.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    downloadHTMLToPDF('Arsip_Soal_CBT', htmlContent);
 }
 
 function downloadAllQAdmin(eid) {
@@ -1024,11 +1124,32 @@ function downloadAllQAdmin(eid) {
         if(res.status === 'success') {
             let htmlContent = '';
             res.data.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
-            const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Arsip Soal</title><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet"><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script><style>body { font-family: 'Poppins', Arial, sans-serif; background-color: #f1f5f9; padding: 40px; margin: 0; display:flex; justify-content:center; } .container { max-width: 800px; width: 100%; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); } img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; } @media print { body{padding:0;} .container{box-shadow:none;} }</style></head><body><div style="text-align:right; margin-bottom:20px;" class="no-print"><button onclick="window.print()" style="padding:10px 20px; background:#0f5132; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak PDF</button></div><div class="container">${htmlContent}</div><script>window.onload = function() { setTimeout(window.print, 1000); }<\/script></body></html>`;
-            const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
-            const a = document.createElement("a"); a.href = url; a.download = `Arsip_Soal_Guru.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            downloadHTMLToPDF('Arsip_Soal_Guru', htmlContent);
         } else { Swal.fire('Error', res.msg, 'error'); }
     }).getSiswaSoal(eid);
+}
+
+function dlSiswaSoal(eid) {
+    showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        showLoad(false);
+        if(res.status === 'success') {
+            let htmlContent = '';
+            res.data.forEach(q => { htmlContent += `<div class="q-box">${generateQHTML(q)}</div>`; });
+            downloadHTMLToPDF('Arsip_File_Soal_Siswa', htmlContent);
+        } else { Swal.fire('Error', res.msg, 'error'); }
+    }).getSiswaSoal(eid);
+}
+
+function dlSiswaHasil(rid) {
+    showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        showLoad(false);
+        if(res.status === 'success') {
+            recapDataStore[rid] = { detail: res.data.Detail, nama: user.Nama, ujian: res.data.Judul, nilai: res.data.TotalNilai, pembuat: 'Pengawas Sekolah' };
+            printRecap(rid);
+        } else { Swal.fire('Error', res.msg, 'error'); }
+    }).getSiswaDetailHasil(rid);
 }
 
 function addNewQuestionBlock() {
@@ -1487,63 +1608,6 @@ function submitSurvey() {
             $('#view-dashboard').removeClass('hidden'); loadPage('siswa-home');
         });
     }).submitSurveyResponse(user.ID, window.activeSurveyData.header.ExamID, answers);
-}
-// ----------------------------------------------------
-
-function editUser(s){ 
-  const u = JSON.parse(decodeURIComponent(s)); $('#modalUser').modal('show'); 
-  $('#mu-id').val(u.ID); $('#mu-nama').val(u.Nama); $('#mu-user').val(u.Username); $('#mu-pass').val(u.Password); 
-  $('#mu-role').val(u.Role); $('#mu-kelas').val(u.Kelas); $('#mu-sekolah').val(u.Sekolah);
-  $('#mu-tgl').val(u.TglLahir); $('#mu-foto-b64').val(u.Foto || ''); $('#mu-foto').val('');
-}
-function saveUser(e){ 
-  if (e) e.preventDefault(); 
-  const d={ id:$('#mu-id').val(), nama:$('#mu-nama').val(), username:$('#mu-user').val(), password:$('#mu-pass').val(), role:$('#mu-role').val(), kelas:$('#mu-kelas').val(), sekolah:$('#mu-sekolah').val(), tglLahir:$('#mu-tgl').val(), foto:$('#mu-foto-b64').val() }; 
-  showLoad(true); 
-  google.script.run.withSuccessHandler((res)=>{
-    showLoad(false); $('#modalUser').modal('hide'); $('.modal-backdrop').remove(); $('body').removeClass('modal-open').css('padding-right', '');
-    if (res && res.status === 'success') { Swal.fire({ title: 'Sukses', text: res.msg || 'Data berhasil disimpan!', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => { loadPage('admin-users'); }); } else { Swal.fire('Gagal', res?.msg || 'Terjadi kesalahan sistem', 'error'); }
-  }).adminManageUser('save',d); 
-}
-function delUser(id){ Swal.fire({title:'Hapus User?', icon:'warning', showCancelButton:true, confirmButtonColor: '#d33'}).then(r=>{if(r.isConfirmed) google.script.run.withSuccessHandler(()=>{loadPage('admin-users')}).adminManageUser('delete',{id:id})}); }
-function handleResetCache() { Swal.fire({title:'Reset Cache?', text:"Membersihkan data sementara sistem.", icon:'warning', showCancelButton:true}).then((r)=>{ if(r.isConfirmed){ showLoad(true); google.script.run.withSuccessHandler(r=>{showLoad(false);Swal.fire('Sukses',r.msg,'success')}).sysResetCache(); }}); }
-function deleteResult(rid) { Swal.fire({title:'Hapus & Reset Ujian Siswa?', text:'Data dihapus, cache/status ujian direset, dan siswa bisa ujian kembali.', icon:'warning', showCancelButton:true, confirmButtonColor:'#d33'}).then(r=>{ if(r.isConfirmed) { showLoad(true); google.script.run.withSuccessHandler(res=>{ showLoad(false); if(res.status==='success'){ Swal.fire('Berhasil',res.msg,'success'); loadPage('hasil-rekap'); } else Swal.fire('Gagal',res.msg,'error'); }).adminDeleteResult(rid); } }); }
-function renderMonitoring(){ showLoad(true); google.script.run.withSuccessHandler(r=>{ showLoad(false); let h=`<div class="row g-2 mb-3"><div class="col-md-5"><select id="mon-sel" class="form-select border-0 bg-white shadow-sm rounded-pill px-3" onchange="startMon()"><option value="">Pilih Jadwal Ujian...</option>`; r.data.exams.forEach(e=>h+=`<option value="${e.ExamID}">${e.Judul}</option>`); h+=`</select></div><div class="col-md-5"><input type="text" id="mon-search" class="form-control border-0 bg-white shadow-sm rounded-pill px-3" placeholder="Cari Nama Siswa..." onkeyup="filterTable('tbl-mon', this.value)"></div><div class="col-md-2"></div></div><div id="mon-area" class="bg-white p-4 rounded-4 shadow-sm border" style="min-height:200px"><div class="text-center text-muted mt-4"><i class="fas fa-desktop fa-3x mb-3 opacity-50"></i><br>Silakan pilih jadwal ujian di atas.</div></div>`; $('#content-area').html(h); }).getDashboardData(user.Role,user.ID,user.Kelas,user.Sekolah); }
-function startMon(){ const id=$('#mon-sel').val(); if(id){ fetchMon(id); clearInterval(monitorInterval); monitorInterval=setInterval(()=>fetchMon(id),10000); } else $('#mon-area').empty(); }
-function fetchMon(id){ google.script.run.withSuccessHandler(r=>{ if(r.status==='error') { $('#mon-area').html(`<div class="alert alert-warning">${r.msg}</div>`); return; } let h=`<div class="table-responsive"><table id="tbl-mon" class="table table-hover align-middle mb-0"><thead><tr class="table-light"><th>Nama Siswa</th><th>Progress Mengerjakan</th><th>Status Online</th><th>Aksi Darurat</th></tr></thead><tbody>`; r.data.forEach(d=>{ const p=Math.round((d.terjawab/d.total)*100)||0; h+=`<tr data-uid="${d.id}" data-nama="${d.nama}"><td><div class="fw-bold text-dark">${d.nama}</div><small class="text-muted"><i class="fas fa-users"></i> ${d.kelas}</small></td><td><div class="progress shadow-sm rounded-pill" style="height:22px"><div class="progress-bar bg-success fw-bold" style="width:${p}%">${d.terjawab} / ${d.total} Soal</div></div></td><td>${d.status==='Online'?'<span class="badge bg-success shadow-sm rounded-pill px-3 py-2"><i class="fas fa-wifi me-1"></i> Mengerjakan</span>':'<span class="badge bg-secondary shadow-sm rounded-pill px-3 py-2"><i class="fas fa-power-off me-1"></i> OFF / Selesai</span>'}</td><td><button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="triggerReset('${d.id}', '${d.nama}')"><i class="fas fa-power-off me-1"></i> Keluarkan</button></td></tr>` }); $('#mon-area').html(h+'</tbody></table></div>'); const cur=$('#mon-search').val(); if(cur) filterTable('tbl-mon', cur); }).getLiveMonitoring(id, user.Role, user.Sekolah); }
-function triggerReset(sId, sName) { const eId = $('#mon-sel').val(); if(!sId || !eId) return; Swal.fire({ title: 'Keluarkan Siswa Ini?', text: `${sName} akan dikeluarkan paksa dan harus mengulang login ujian.`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Keluarkan!' }).then(r => { if(r.isConfirmed) { Swal.fire({title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); google.script.run.withSuccessHandler(res => { if(res.status === 'success') { Swal.fire('Berhasil', res.msg, 'success'); fetchMon(eId); } else { Swal.fire('Gagal', res.msg, 'error'); } }).teacherResetStatus(user.ID, sId, eId); } }); }
-function filterTable(tid, q) { const f=q.toLowerCase(); $(`#${tid} tbody tr`).each(function(){ const t=$(this).text().toLowerCase(); $(this).toggle(t.indexOf(f)>-1); }); }
-
-function openKoreksi(rid) {
-    const d = recapDataStore[rid]; if (!d) return;
-    let detailArr = []; try { detailArr = JSON.parse(d.detail); } catch(e){}
-    let html = `<input type="hidden" id="kor-rid" value="${rid}"><div class="alert alert-info border-0 shadow-sm rounded-4 mb-4">Siswa: <b>${d.nama}</b><br>Ujian: <b>${d.ujian}</b></div>`;
-    detailArr.forEach((item, index) => {
-        let no = item.i !== undefined ? item.i : item[0];
-        let score = item.s !== undefined ? item.s : item[1];
-        let type = item.t || 'Objektif';
-        let ans = item.a !== undefined ? item.a : '';
-        let max = item.m !== undefined ? item.m : 0;
-        
-        html += `<div class="card mb-3 border-0 shadow-sm rounded-4"><div class="card-body p-4"><div class="d-flex justify-content-between align-items-center mb-3"><strong class="text-primary fs-5">Soal No. ${no} <span class="badge bg-secondary ms-2 align-middle fs-6 rounded-pill">${type}</span></strong><div class="fw-bold d-flex align-items-center bg-light p-2 px-3 rounded-pill border">Skor: <input type="number" step="0.1" class="form-control form-control-sm d-inline w-auto kor-score ms-2 fw-bold text-success" data-idx="${index}" value="${score}" max="${max}" min="0" style="max-width: 80px;"> <span class="ms-2 text-muted">/ Maks. ${max}</span></div></div>`;
-        let displayAns = Array.isArray(ans) ? ans.join(', ') : ans;
-        html += `<div class="p-3 bg-light rounded-4 border"><b>Jawaban Siswa:</b><br><div class="mt-2 text-dark fs-6">${displayAns ? String(displayAns).replace(/\n/g, '<br>') : '<i class="text-muted"><i class="fas fa-info-circle"></i> Tidak dijawab</i>'}</div></div>`;
-        html += `</div></div>`;
-    });
-    $('#kor-body').html(html); $('#modalKoreksi').modal('show');
-}
-function saveKoreksi() {
-    const rid = $('#kor-rid').val(); const d = recapDataStore[rid]; let detailArr = JSON.parse(d.detail);
-    $('.kor-score').each(function() { detailArr[$(this).data('idx')].s = parseFloat($(this).val()) || 0; });
-    let maxTotal = 0, totalScore = 0;
-    detailArr.forEach(item => { maxTotal += (item.m || 0); totalScore += (item.s || 0); });
-    const finalScore = maxTotal > 0 ? Number(((totalScore / maxTotal) * 100).toFixed(2)) : 0;
-    const btn = $('#btn-save-kor'); btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
-    google.script.run.withSuccessHandler(res => {
-        btn.prop('disabled', false).text('Simpan Nilai Baru');
-        if (res.status === 'success') { $('#modalKoreksi').modal('hide'); Swal.fire('Sukses', res.msg, 'success'); loadPage('hasil-rekap'); } 
-        else { Swal.fire('Gagal', res.msg, 'error'); }
-    }).adminUpdateResult(rid, finalScore, JSON.stringify(detailArr));
 }
 </script>
 </body>
