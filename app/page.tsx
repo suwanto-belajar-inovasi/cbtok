@@ -47,13 +47,13 @@ export default function Page() {
       <div style={{
         fontFamily: "'Poppins', sans-serif",
         minHeight: '100vh',
-        width: '100vw',
+        width: '100%',
         margin: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        /* Gradasi Hijau Keemasan Kemenag */
+        /* Perpaduan Hijau dan Emas Kemenag */
         background: "linear-gradient(135deg, #0f5132 0%, #d4af37 100%)",
         padding: '20px'
       }}>
@@ -68,7 +68,7 @@ export default function Page() {
           zIndex: 2,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'stretch'
+          alignItems: 'stretch' /* Memastikan form lurus */
         }}>
           
           <div className="text-center mb-4">
@@ -83,7 +83,7 @@ export default function Page() {
             </h4>
           </div>
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} style={{ width: '100%' }}>
             <div className="form-floating mb-3">
               <input 
                 type="text" 
@@ -113,7 +113,7 @@ export default function Page() {
               ></i>
             </div>
 
-            {/* Input Tanggal Lahir dibuat opsional (tanpa required) */}
+            {/* Input Tanggal Lahir (Tanpa Atribut Required) */}
             <div className="form-floating mb-4">
               <input 
                 type="date" 
@@ -121,7 +121,7 @@ export default function Page() {
                 value={tglLahir} 
                 onChange={(e) => setTglLahir(e.target.value)} 
               />
-              <label>Tanggal Lahir (Kosongkan jika Guru)</label>
+              <label>Tanggal Lahir (Siswa Wajib Isi)</label>
             </div>
 
             <button 
