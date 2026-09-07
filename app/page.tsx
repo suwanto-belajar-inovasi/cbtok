@@ -51,30 +51,34 @@ export default function Page() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: "linear-gradient(135deg, rgba(30,58,138,0.9) 0%, rgba(59,130,246,0.9) 100%)",
-        padding: '20px'
+        /* Perpaduan Hijau dan Emas yang elegan */
+        background: "linear-gradient(135deg, #0f5132 0%, #d4af37 100%)",
+        padding: '20px',
+        margin: 0
       }}>
         
         <div style={{
           background: 'white',
-          borderRadius: '20px',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+          borderRadius: '15px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
           width: '100%',
-          maxWidth: '420px',
+          maxWidth: '400px',
           padding: '40px',
-          zIndex: 2
+          zIndex: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch'
         }}>
           
           <div className="text-center mb-4">
-            {/* Ganti tautan (src) gambar di bawah ini jika Anda memiliki link logo KKGMI yang spesifik */}
             <img 
               src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" 
               className="mb-3 rounded" 
-              width="100" 
+              width="90" 
               alt="Logo KKGMI" 
             />
-            <h4 className="fw-bold text-center" style={{ color: '#0d6efd' }}>
-              KKGMI SURABAYA 10<br/>
+            <h4 className="fw-bold text-center" style={{ color: '#0d6efd', fontSize: '22px' }}>
+              KKGMI SURABAYA 10
             </h4>
           </div>
 
@@ -108,29 +112,29 @@ export default function Page() {
               ></i>
             </div>
 
+            {/* Hapus atribut "required" agar Guru/Admin tidak wajib isi TTL */}
             <div className="form-floating mb-4">
               <input 
                 type="date" 
                 className="form-control" 
-                required 
                 value={tglLahir} 
                 onChange={(e) => setTglLahir(e.target.value)} 
               />
-              <label>Tanggal Lahir</label>
+              <label>Tanggal Lahir (Khusus Siswa)</label>
             </div>
 
             <button 
               type="submit" 
               disabled={loading} 
-              className="btn btn-primary w-100 py-2 fw-bold shadow-sm"
-              style={{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }}
+              className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
+              style={{ backgroundColor: '#0d6efd', borderColor: '#0d6efd', fontSize: '16px', borderRadius: '8px' }}
             >
               {loading ? 'MEMPROSES...' : 'MASUK SEKARANG'}
             </button>
           </form>
         </div>
 
-        <div className="text-center mt-3 text-white small z-3">
+        <div className="text-center mt-4 text-white small z-3">
           © 2026 KKGMI SURABAYA 10 @support by Belajar Inovasi
         </div>
 
