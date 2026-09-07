@@ -40,7 +40,7 @@ export default function Page() {
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
@@ -52,8 +52,8 @@ export default function Page() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        /* Perpaduan Hijau dan Emas Kemenag */
-        background: "linear-gradient(135deg, #0f5132 0%, #d4af37 100%)",
+        /* Gradasi Elegan: Hijau Zamrud ke Emas */
+        background: "linear-gradient(135deg, #064e3b 0%, #15803d 50%, #d4af37 100%)",
         padding: '20px'
       }}>
         
@@ -61,7 +61,7 @@ export default function Page() {
           <div className="row g-4 align-items-center">
             
             {/* KOLOM INFORMASI TRYOUT */}
-            <div className="col-lg-7 text-white pe-lg-4">
+            <div className="col-lg-7 text-white pe-lg-4 mb-4 mb-lg-0">
               <h2 className="fw-bold mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>Tryout TKA KKGMI Surabaya 10</h2>
               <p className="lead mb-4" style={{ fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
                 Selamat datang di Aplikasi Computer Based Test (CBT) resmi Kelompok Kerja Guru Madrasah Ibtidaiyah (KKGMI) Kota Surabaya 10.
@@ -80,19 +80,19 @@ export default function Page() {
               <div className="bg-white text-dark p-4 rounded-4 shadow-sm" style={{ opacity: 0.95 }}>
                 <h5 className="fw-bold text-success mb-3"><i className="fas fa-calendar-alt me-2"></i>Jadwal Pelaksanaan</h5>
                 <div className="row g-2 small">
-                  <div className="col-md-6 border-bottom pb-2">
+                  <div className="col-sm-6 border-bottom pb-2">
                     <div className="fw-bold">Tryout 1 (Februari 2026)</div>
                     <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
                   </div>
-                  <div className="col-md-6 border-bottom pb-2">
+                  <div className="col-sm-6 border-bottom pb-2">
                     <div className="fw-bold">Tryout 2 (Maret 2026)</div>
                     <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
                   </div>
-                  <div className="col-md-6 border-bottom pb-2 border-bottom-md-0">
+                  <div className="col-sm-6 border-bottom pb-2 border-bottom-md-0">
                     <div className="fw-bold">Tryout 3 (April 2026)</div>
                     <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
                   </div>
-                  <div className="col-md-6">
+                  <div className="col-sm-6">
                     <div className="fw-bold">Tryout 4 (Mei 2026)</div>
                     <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
                   </div>
@@ -104,8 +104,8 @@ export default function Page() {
             <div className="col-lg-5">
               <div style={{
                 background: 'white',
-                borderRadius: '15px',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                borderRadius: '20px',
+                boxShadow: '0 15px 35px rgba(0,0,0,0.3)',
                 width: '100%',
                 padding: '40px',
                 zIndex: 2,
@@ -115,14 +115,13 @@ export default function Page() {
               }}>
                 
                 <div className="text-center mb-4">
-                  {/* LOGO DITENGAHKAN DENGAN mx-auto d-block */}
                   <img 
                     src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" 
                     className="mx-auto d-block mb-3 rounded" 
                     width="90" 
                     alt="Logo KKGMI" 
                   />
-                  <h4 className="fw-bold text-center" style={{ color: '#0f5132', fontSize: '22px' }}>
+                  <h4 className="fw-bold text-center" style={{ color: '#064e3b', fontSize: '22px' }}>
                     MASUK UJIAN
                   </h4>
                 </div>
@@ -131,7 +130,7 @@ export default function Page() {
                   <div className="form-floating mb-3">
                     <input 
                       type="text" 
-                      className="form-control" 
+                      className="form-control bg-light border-0" 
                       placeholder="User" 
                       required 
                       value={username} 
@@ -143,7 +142,7 @@ export default function Page() {
                   <div className="form-floating mb-3 position-relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
-                      className="form-control" 
+                      className="form-control bg-light border-0" 
                       placeholder="Pass" 
                       required 
                       value={password} 
@@ -160,7 +159,7 @@ export default function Page() {
                   <div className="form-floating mb-4">
                     <input 
                       type="date" 
-                      className="form-control" 
+                      className="form-control bg-light border-0" 
                       value={tglLahir} 
                       onChange={(e) => setTglLahir(e.target.value)} 
                     />
@@ -170,8 +169,8 @@ export default function Page() {
                   <button 
                     type="submit" 
                     disabled={loading} 
-                    className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
-                    style={{ backgroundColor: '#0f5132', borderColor: '#0f5132', fontSize: '16px', borderRadius: '8px' }}
+                    className="btn w-100 py-3 fw-bold shadow-sm text-white"
+                    style={{ background: 'linear-gradient(90deg, #064e3b 0%, #15803d 100%)', border: 'none', fontSize: '16px', borderRadius: '10px' }}
                   >
                     {loading ? 'MEMPROSES...' : 'MASUK SEKARANG'}
                   </button>
