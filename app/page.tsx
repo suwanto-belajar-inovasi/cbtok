@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Page() {
   const [username, setUsername] = useState('');
@@ -8,6 +8,14 @@ export default function Page() {
   const [tglLahir, setTglLahir] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // FUNGSI BARU: Cek Sesi Otomatis Saat Reload
+  useEffect(() => {
+    const savedUser = localStorage.getItem('cbt_user');
+    if (savedUser) {
+      window.location.href = '/index.html';
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +60,6 @@ export default function Page() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        /* Gradasi Elegan: Hijau Zamrud ke Emas */
         background: "linear-gradient(135deg, #064e3b 0%, #15803d 50%, #d4af37 100%)",
         padding: '20px'
       }}>
@@ -60,7 +67,6 @@ export default function Page() {
         <div className="container" style={{ maxWidth: '1100px' }}>
           <div className="row g-4 align-items-center">
             
-            {/* KOLOM INFORMASI TRYOUT */}
             <div className="col-lg-7 text-white pe-lg-4 mb-4 mb-lg-0">
               <h2 className="fw-bold mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>Tryout TKA KKGMI Surabaya 10</h2>
               <p className="lead mb-4" style={{ fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
@@ -100,7 +106,6 @@ export default function Page() {
               </div>
             </div>
 
-            {/* KOLOM FORM LOGIN */}
             <div className="col-lg-5">
               <div style={{
                 background: 'white',
