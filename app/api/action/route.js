@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { turso } from '../../../lib/turso';
 
@@ -52,7 +53,8 @@ export async function POST(req) {
       const [role, uid, sekolah] = args;
       let users;
       if (role === 'guru') users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
-      else users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
+      // Admin diizinkan melihat semua tipe akun (Guru/Siswa)
+      else users = await turso.execute("SELECT * FROM Users"); 
       return NextResponse.json({ status: 'success', data: users.rows });
     }
 
@@ -69,7 +71,7 @@ export async function POST(req) {
       } else if (mode === 'delete') {
         await turso.execute({ sql: "DELETE FROM Users WHERE ID = ?", args: [d.id] });
       }
-      return NextResponse.json({ status: 'success', msg: 'Data User berhasil diperbarui!' });
+      return NextResponse.json({ status: 'success', msg: 'Data User berhasil disimpan!' });
     }
 
     // ==========================================
