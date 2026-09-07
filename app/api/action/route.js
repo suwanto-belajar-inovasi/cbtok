@@ -6,9 +6,6 @@ export async function POST(req) {
   try {
     const { action, args } = await req.json();
 
-    // ==========================================
-    // 1. DASHBOARD & MANAJEMEN USER (DENGAN FILTER GURU)
-    // ==========================================
     if (action === 'getDashboardData') {
       const [role, userId, kelas, sekolah] = args;
       let exams, users;
@@ -21,7 +18,6 @@ export async function POST(req) {
         users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
       }
       
-      // Menggunakan tautan logo KKGMI terbaru
       let output = { logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' };
       
       if (role === 'admin' || role === 'guru') {
@@ -79,9 +75,6 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: 'Data User berhasil disimpan!' });
     }
 
-    // ==========================================
-    // 2. MANAJEMEN UJIAN & BANK SOAL
-    // ==========================================
     if (action === 'adminSaveExam') {
       const d = args[0]; const id = d.examId || ('EX' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
@@ -129,9 +122,6 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', msg: `${qArr.length} soal diupload!` });
     }
 
-    // ==========================================
-    // 3. EXECUSI UJIAN & SUBMIT
-    // ==========================================
     if (action === 'getExamPack') {
       const eid = args[0]; const uid = args[1];
       const history = await turso.execute({ sql: "SELECT * FROM Results WHERE ExamID=? AND SiswaID=?", args: [eid, uid]});
@@ -142,26 +132,83 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', data: cleanQ, duration: examInfo.rows[0].Durasi, judul: examInfo.rows[0].Judul, token: examInfo.rows[0].Token });
     }
 
+    // ==========================================
+    // UPDATE ALGORITMA PENILAIAN SKALA 100 & PARSIAL
+    // ==========================================
     if (action === 'submitExam') {
        const uid = args[0]; const eid = args[1]; const answers = args[2]; const violations = args[3];
-       let totalScore = 0; let detailLog = [];
+       
+       let rawTotalScore = 0; 
+       let detailLog = [];
+       let maxPossibleTotalScore = 0;
+
        const qs = await turso.execute({ sql: "SELECT * FROM Questions WHERE ExamID=?", args:[eid] });
+       
+       // Hitung total skor maksimum yang bisa diraih dari seluruh soal ujian ini
+       qs.rows.forEach(q => { maxPossibleTotalScore += Number(q.Skor) || 0; });
+
        answers.forEach(ans => {
           const q = qs.rows.find(x => x.QID === ans.qid);
           if(q) {
              const keys = JSON.parse(q.Key || "[]");
-             const scoreEarned = keys.includes(ans.answer) ? q.Skor : 0;
-             totalScore += scoreEarned;
-             detailLog.push({ i: q.Nomor, s: scoreEarned, m: q.Skor, t: q.Tipe, a: ans.answer });
+             let scoreEarned = 0;
+             const maxSkor = Number(q.Skor) || 0;
+
+             if (q.Tipe === 'PGK') {
+                 // PG Kompleks (Jawaban Multi): Penilaian Seperbagian dengan penalti jawaban salah
+                 if (Array.isArray(ans.answer)) {
+                     const correct_selected = ans.answer.filter(val => keys.includes(val)).length;
+                     const wrong_selected = ans.answer.filter(val => !keys.includes(val)).length;
+                     const total_correct_keys = keys.length;
+                     
+                     if (total_correct_keys > 0) {
+                         let partial = (correct_selected - wrong_selected) / total_correct_keys;
+                         if (partial < 0) partial = 0; // Batas bawah tidak minus
+                         scoreEarned = partial * maxSkor;
+                     }
+                 }
+             } else if (q.Tipe === 'PGKK') {
+                 // Benar-Salah: Penilaian Seperbagian per baris
+                 if (Array.isArray(ans.answer)) {
+                     let correct_match = 0;
+                     const total_statements = keys.length;
+                     ans.answer.forEach((val, idx) => {
+                         if (val && val === keys[idx]) correct_match++;
+                     });
+                     if (total_statements > 0) {
+                         scoreEarned = (correct_match / total_statements) * maxSkor;
+                     }
+                 }
+             } else if (q.Tipe === 'PGS') {
+                 // Pilihan Ganda Tunggal
+                 if (keys.includes(ans.answer)) scoreEarned = maxSkor;
+             } else {
+                 // Tipe Menjodohkan dan Uraian otomatis/persis
+                 if (Array.isArray(ans.answer)) {
+                     if (JSON.stringify(ans.answer) === JSON.stringify(keys)) scoreEarned = maxSkor;
+                 } else {
+                     if (keys.includes(ans.answer)) scoreEarned = maxSkor;
+                 }
+             }
+             
+             // Membulatkan 2 angka di belakang koma untuk skor log detail
+             scoreEarned = Math.round(scoreEarned * 100) / 100;
+             rawTotalScore += scoreEarned;
+             detailLog.push({ i: q.Nomor, s: scoreEarned, m: maxSkor, t: q.Tipe, a: ans.answer });
           }
        });
-       await turso.execute({ sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, ?, ?, ?)", args: ['RES' + Date.now(), uid, eid, totalScore, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] });
-       return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: totalScore } });
+
+       // Konversi skor ke skala final maksimal 100
+       let finalScore100 = maxPossibleTotalScore > 0 ? (rawTotalScore / maxPossibleTotalScore) * 100 : 0;
+       finalScore100 = Math.round(finalScore100 * 100) / 100;
+
+       await turso.execute({ 
+           sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, ?, ?, ?)", 
+           args: ['RES' + Date.now(), uid, eid, finalScore100, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] 
+       });
+       return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
-    // ==========================================
-    // 4. REKAP NILAI, KOREKSI & SISWA GET HASIL
-    // ==========================================
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
       let query = `
