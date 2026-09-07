@@ -50,7 +50,6 @@ export default function Page() {
         width: '100%',
         margin: 0,
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         /* Perpaduan Hijau dan Emas Kemenag */
@@ -58,85 +57,133 @@ export default function Page() {
         padding: '20px'
       }}>
         
-        <div style={{
-          background: 'white',
-          borderRadius: '15px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-          width: '100%',
-          maxWidth: '400px',
-          padding: '40px',
-          zIndex: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch' /* Memastikan form lurus */
-        }}>
-          
-          <div className="text-center mb-4">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" 
-              className="mb-3 rounded" 
-              width="90" 
-              alt="Logo KKGMI" 
-            />
-            <h4 className="fw-bold text-center" style={{ color: '#0f5132', fontSize: '22px' }}>
-              KKGMI SURABAYA 10
-            </h4>
+        <div className="container" style={{ maxWidth: '1100px' }}>
+          <div className="row g-4 align-items-center">
+            
+            {/* KOLOM INFORMASI TRYOUT */}
+            <div className="col-lg-7 text-white pe-lg-4">
+              <h2 className="fw-bold mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>Tryout TKA KKGMI Surabaya 10</h2>
+              <p className="lead mb-4" style={{ fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
+                Selamat datang di Aplikasi Computer Based Test (CBT) resmi Kelompok Kerja Guru Madrasah Ibtidaiyah (KKGMI) Kota Surabaya 10.
+              </p>
+              
+              <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.95 }}>
+                <h5 className="fw-bold text-success mb-3"><i className="fas fa-list-check me-2"></i>Aturan & Cara Mengerjakan</h5>
+                <ul className="mb-0 small" style={{ paddingLeft: '1.2rem', lineHeight: '1.6' }}>
+                  <li>Pastikan koneksi internet Anda stabil sebelum mulai ujian.</li>
+                  <li>Sistem akan otomatis beralih ke mode <b>Layar Penuh (Fullscreen)</b>.</li>
+                  <li><b>DILARANG</b> membuka tab baru, aplikasi lain, atau membagi layar (Split Screen). Pelanggaran maksimal 3 kali akan membuat jawaban otomatis terkirim.</li>
+                  <li>Tombol <b>Selesai Ujian</b> hanya akan muncul di soal nomor terakhir. Gunakan tombol <b>Ragu-ragu</b> jika ingin menandai soal yang belum yakin.</li>
+                </ul>
+              </div>
+
+              <div className="bg-white text-dark p-4 rounded-4 shadow-sm" style={{ opacity: 0.95 }}>
+                <h5 className="fw-bold text-success mb-3"><i className="fas fa-calendar-alt me-2"></i>Jadwal Pelaksanaan</h5>
+                <div className="row g-2 small">
+                  <div className="col-md-6 border-bottom pb-2">
+                    <div className="fw-bold">Tryout 1 (Februari 2026)</div>
+                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
+                  </div>
+                  <div className="col-md-6 border-bottom pb-2">
+                    <div className="fw-bold">Tryout 2 (Maret 2026)</div>
+                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
+                  </div>
+                  <div className="col-md-6 border-bottom pb-2 border-bottom-md-0">
+                    <div className="fw-bold">Tryout 3 (April 2026)</div>
+                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
+                  </div>
+                  <div className="col-md-6">
+                    <div className="fw-bold">Tryout 4 (Mei 2026)</div>
+                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* KOLOM FORM LOGIN */}
+            <div className="col-lg-5">
+              <div style={{
+                background: 'white',
+                borderRadius: '15px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                width: '100%',
+                padding: '40px',
+                zIndex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch'
+              }}>
+                
+                <div className="text-center mb-4">
+                  {/* LOGO DITENGAHKAN DENGAN mx-auto d-block */}
+                  <img 
+                    src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" 
+                    className="mx-auto d-block mb-3 rounded" 
+                    width="90" 
+                    alt="Logo KKGMI" 
+                  />
+                  <h4 className="fw-bold text-center" style={{ color: '#0f5132', fontSize: '22px' }}>
+                    MASUK UJIAN
+                  </h4>
+                </div>
+
+                <form onSubmit={handleLogin} style={{ width: '100%' }}>
+                  <div className="form-floating mb-3">
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="User" 
+                      required 
+                      value={username} 
+                      onChange={(e) => setUsername(e.target.value)} 
+                    />
+                    <label>Username</label>
+                  </div>
+
+                  <div className="form-floating mb-3 position-relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      className="form-control" 
+                      placeholder="Pass" 
+                      required 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                    />
+                    <label>Password</label>
+                    <i 
+                      className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute top-50 end-0 translate-middle-y me-3 text-muted`} 
+                      style={{ cursor: 'pointer', zIndex: 10, fontSize: '1.2rem' }}
+                      onClick={() => setShowPassword(!showPassword)}
+                    ></i>
+                  </div>
+
+                  <div className="form-floating mb-4">
+                    <input 
+                      type="date" 
+                      className="form-control" 
+                      value={tglLahir} 
+                      onChange={(e) => setTglLahir(e.target.value)} 
+                    />
+                    <label>Tanggal Lahir (Siswa Wajib Isi)</label>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={loading} 
+                    className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
+                    style={{ backgroundColor: '#0f5132', borderColor: '#0f5132', fontSize: '16px', borderRadius: '8px' }}
+                  >
+                    {loading ? 'MEMPROSES...' : 'MASUK SEKARANG'}
+                  </button>
+                </form>
+
+                <div className="text-center mt-4 small text-muted">
+                  © 2026 KKGMI SURABAYA 10<br/>@support by Belajar Inovasi
+                </div>
+              </div>
+            </div>
+            
           </div>
-
-          <form onSubmit={handleLogin} style={{ width: '100%' }}>
-            <div className="form-floating mb-3">
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="User" 
-                required 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-              />
-              <label>Username</label>
-            </div>
-
-            <div className="form-floating mb-3 position-relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                className="form-control" 
-                placeholder="Pass" 
-                required 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-              />
-              <label>Password</label>
-              <i 
-                className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'} position-absolute top-50 end-0 translate-middle-y me-3 text-muted`} 
-                style={{ cursor: 'pointer', zIndex: 10, fontSize: '1.2rem' }}
-                onClick={() => setShowPassword(!showPassword)}
-              ></i>
-            </div>
-
-            {/* Input Tanggal Lahir (Tanpa Atribut Required) */}
-            <div className="form-floating mb-4">
-              <input 
-                type="date" 
-                className="form-control" 
-                value={tglLahir} 
-                onChange={(e) => setTglLahir(e.target.value)} 
-              />
-              <label>Tanggal Lahir (Siswa Wajib Isi)</label>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={loading} 
-              className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
-              style={{ backgroundColor: '#0f5132', borderColor: '#0f5132', fontSize: '16px', borderRadius: '8px' }}
-            >
-              {loading ? 'MEMPROSES...' : 'MASUK SEKARANG'}
-            </button>
-          </form>
-        </div>
-
-        <div className="text-center mt-4 text-white small z-3">
-          © 2026 KKGMI SURABAYA 10 @support by Belajar Inovasi
         </div>
 
       </div>
