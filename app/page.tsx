@@ -9,7 +9,7 @@ export default function Page() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // FUNGSI BARU: Cek Sesi Otomatis Saat Reload
+  // Mencegah login ulang jika sesi masih aktif saat direload
   useEffect(() => {
     const savedUser = localStorage.getItem('cbt_user');
     if (savedUser) {
