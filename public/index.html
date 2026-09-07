@@ -19,9 +19,8 @@
         body { font-family: 'Poppins', sans-serif; background-color: var(--bg-body); color: #1e293b; overflow-x: hidden; }
         body.exam-mode { overflow: hidden; user-select: none; }
         .hidden { display: none !important; }
-        .q-content img, .opt-content img { max-width: 100% !important; height: auto !important; border-radius: 6px; margin: 5px 0; }
+        .q-content img, .opt-content img, .survey-stimulus img { max-width: 100% !important; height: auto !important; border-radius: 6px; margin: 5px 0; }
         
-        /* Dashboard & Sidebar Styling */
         .wrapper { display: flex; width: 100%; align-items: stretch; position: relative; }
         #sidebar { min-width: 260px; max-width: 260px; background: #064e3b; color: #fff; min-height: 100vh; position: fixed; z-index: 1050; transition: all 0.3s; left: 0; top: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
         #sidebar.active { left: -260px; }
@@ -29,7 +28,6 @@
         #sidebar ul li a { padding: 15px 25px; display: block; color: #e2e8f0; text-decoration: none; border-left: 4px solid transparent; cursor: pointer; transition: 0.2s; }
         #sidebar ul li a:hover, #sidebar ul li a.active { background: rgba(212, 175, 55, 0.1); color: #fff; border-left-color: var(--secondary); }
         
-        /* Exam Layout */
         #view-exam { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 9999; background: #f8fafc; overflow: hidden; display: flex; flex-direction: column; }
         .exam-header { flex-shrink: 0; height: 60px; background: #064e3b; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .exam-container-split { flex-grow: 1; display: flex; gap: 20px; padding: 20px; overflow: hidden; }
@@ -47,11 +45,17 @@
         .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         
-        /* Custom UI Tweak */
+        .match-container { position: relative; width: 100%; min-height: 300px; display: flex; justify-content: space-between; padding: 10px; user-select: none; }
+        .match-col { width: 40%; display: flex; flex-direction: column; gap: 15px; z-index: 2; }
+        .match-item { background: #fff; border: 2px solid #e2e8f0; padding: 10px 15px; border-radius: 8px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .match-item:hover { border-color: var(--secondary); }
+        .match-item.selected { border-color: var(--primary); background: #eff6ff; }
+        .match-item.matched { border-color: var(--accent); background: #f0fdf4; opacity: 0.8; }
+        .match-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        .swal2-container { z-index: 20000 !important; }
         #q-slides-container .form-check-input { width: 1.5em !important; height: 1.5em !important; cursor: pointer; margin-top: 0 !important; }
         .clickable-opt { cursor: pointer; transition: all 0.2s ease-in-out; margin-bottom: 0; }
         .clickable-opt:hover { background-color: #f1f5f9 !important; border-color: var(--secondary) !important; }
-        .swal2-container { z-index: 20000 !important; }
         
         @media (max-width: 768px) { 
             #sidebar { left: -260px; } 
@@ -59,7 +63,6 @@
             #content { margin-left: 0; padding: 15px; } 
             .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1040; display: none; } 
             .overlay.active { display: block; } 
-            
             .exam-header { flex-wrap: wrap; height: auto; padding: 10px; justify-content: center; text-align: center; gap: 10px; }
             .exam-container-split { flex-direction: column; overflow-y: auto; padding: 10px; gap: 15px; }
             .q-main-area, .q-nav-area { height: auto; flex: none; overflow: visible; padding: 15px; }
@@ -93,7 +96,7 @@
         <ul class="list-unstyled components hidden" id="menu-guru">
             <li><a onclick="loadPage('admin-home')" class="nav-link active"><i class="fas fa-home me-3"></i>Dashboard</a></li>
             <li><a onclick="loadPage('admin-users')" class="nav-link"><i class="fas fa-users me-3"></i>Data Peserta</a></li>
-            <li><a onclick="loadPage('admin-ujian')" class="nav-link"><i class="fas fa-file-alt me-3"></i>Bank Soal</a></li>
+            <li><a onclick="loadPage('admin-ujian')" class="nav-link"><i class="fas fa-file-alt me-3"></i>Bank Soal TKA</a></li>
             <li><a onclick="loadPage('hasil-rekap')" class="nav-link"><i class="fas fa-poll me-3"></i>Hasil Nilai</a></li>
             <li><a onclick="loadPage('guru-monitoring')" class="nav-link"><i class="fas fa-desktop me-3"></i>Live Monitor</a></li>
             <li><a onclick="loadPage('admin-administrasi')" class="nav-link text-info"><i class="fas fa-print me-3"></i>Administrasi</a></li>
@@ -157,32 +160,33 @@
     </div>
 </div>
 
-<!-- TAMPILAN COUNTDOWN 30 DETIK MENUJU SURVEI -->
-<div id="view-countdown" class="hidden" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8fafc, #e2e8f0);">
-    <div class="card border-0 shadow-lg rounded-4 p-5 text-center" style="max-width: 500px;">
-        <i class="fas fa-check-circle text-success mb-3" style="font-size: 4rem;"></i>
-        <h3 class="fw-bold text-dark">Ujian TKA Berhasil Dikirim!</h3>
-        <p class="text-muted mb-4 mt-3">Mohon tunggu sebentar, Anda wajib mengisi Survei Evaluasi. Anda akan diarahkan secara otomatis dalam:</p>
+<!-- TAMPILAN COUNTDOWN (JEDA MENUJU SURVEI) -->
+<div id="view-countdown" class="hidden" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
+    <div class="card border-0 shadow-lg rounded-4 p-5 text-center" style="max-width: 550px;">
+        <i class="fas fa-check-circle text-success mb-3" style="font-size: 5rem;"></i>
+        <h3 class="fw-bold text-dark">Ujian TKA Terkirim!</h3>
+        <p class="text-muted mb-4 mt-3" style="font-size: 1.1rem;">Mohon tunggu sebentar, Anda diwajibkan untuk mengisi Survei Evaluasi. Layar akan beralih otomatis dalam:</p>
         <h1 class="display-1 fw-bold text-primary mb-4" id="countdown-number">30</h1>
-        <button class="btn btn-outline-secondary rounded-pill px-4 fw-bold" onclick="skipCountdown()">Lanjutkan Ke Survei Sekarang <i class="fas fa-arrow-right ms-2"></i></button>
+        <button class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow" onclick="skipCountdown()">Lanjutkan Ke Survei Sekarang <i class="fas fa-arrow-right ms-2"></i></button>
     </div>
 </div>
 
-<!-- TAMPILAN FORM SURVEI SISWA -->
-<div id="view-survey" class="hidden" style="min-height: 100vh; background-color: #f8fafc;">
-    <div class="bg-primary text-white p-4 shadow-sm text-center">
-        <h4 class="fw-bold m-0" id="survey-title">Judul Survey</h4>
-        <p class="m-0 mt-2 text-white-50" id="survey-desc">Deskripsi</p>
+<!-- TAMPILAN FORM SURVEI DENGAN UI CERIA -->
+<div id="view-survey" class="hidden" style="min-height: 100vh; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
+    <div class="bg-warning text-dark p-5 shadow-sm text-center" style="border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; background: linear-gradient(135deg, #f6d365 0%, #fda085 100%) !important;">
+        <i class="fas fa-smile-beam fa-3x mb-3 text-white"></i>
+        <h3 class="fw-bold m-0 text-white" id="survey-title" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">Judul Survey</h3>
+        <p class="m-0 mt-2 text-white fw-medium" id="survey-desc" style="font-size: 1.1rem;">Deskripsi</p>
     </div>
     <div class="container my-5" style="max-width: 900px;" id="survey-container">
-        <!-- Survei Dirender Di Sini -->
+        <!-- Soal Survei Otomatis Di Sini -->
     </div>
     <div class="container text-center mb-5 pb-5">
-        <button class="btn btn-success btn-lg rounded-pill px-5 py-3 fw-bold shadow" onclick="submitSurvey()"><i class="fas fa-paper-plane me-2"></i> Kirim Jawaban Survei</button>
+        <button class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg" onclick="submitSurvey()" style="background: #ff758c; border: none;"><i class="fas fa-paper-plane me-2"></i> Kirim Jawaban Survei</button>
     </div>
 </div>
 
-<!-- MODAL UNTUK ADMIN (UJIAN TKA) -->
+<!-- MODAL UNTUK ADMIN (BUAT JADWAL UJIAN) -->
 <div class="modal fade" id="modalExam" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow">
@@ -220,37 +224,42 @@
     </div>
 </div>
 
-<!-- MODAL UNTUK ADMIN (BUAT SURVEI) -->
+<!-- MODAL UNTUK ADMIN (BUAT SURVEI & LINKING) -->
 <div class="modal fade" id="modalSurvey" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white"><h5 class="modal-title fw-bold">Pembuatan Form Survei</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success text-white"><h5 class="modal-title fw-bold">Pengaturan Form Survei</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="frm-survey" onsubmit="event.preventDefault(); saveSurveyHeader(); return false;" action="javascript:void(0);">
                     <input type="hidden" id="srv-id" name="id">
                     <div class="mb-3">
                         <label class="small fw-bold text-muted">Nama Survei</label>
-                        <input type="text" name="judul" id="srv-judul" class="form-control" placeholder="Contoh: Survey Karakter" required>
+                        <input type="text" name="judul" id="srv-judul" class="form-control" placeholder="Contoh: Survey Karakter Belajar" required>
                     </div>
                     <div class="mb-3">
                         <label class="small fw-bold text-muted">Deskripsi / Petunjuk Pengisian</label>
                         <textarea name="desc" id="srv-desc" class="form-control" rows="3" required></textarea>
                     </div>
+                    <div class="mb-3 p-3 bg-light rounded border border-warning">
+                        <label class="small fw-bold text-primary mb-2"><i class="fas fa-link"></i> Sambungkan dengan Ujian TKA</label>
+                        <select name="linkedExam" id="srv-linked-exam" class="form-select fw-bold"></select>
+                        <small class="text-muted mt-2 d-block">Penting: Survei ini akan otomatis muncul hanya untuk siswa yang baru saja menekan tombol 'Selesai' pada ujian TKA yang dipilih di atas.</small>
+                    </div>
                     <div class="mb-4">
-                        <label class="small fw-bold text-muted">Status Survei</label>
+                        <label class="small fw-bold text-muted">Status Aktif Survei</label>
                         <select name="status" id="srv-status" class="form-select fw-bold">
-                            <option value="Aktif">Aktif (Tampil setelah TKA)</option>
+                            <option value="Aktif">Aktif (Auto Muncul)</option>
                             <option value="Tidak">Tidak Aktif</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-3">SIMPAN SURVEI</button>
+                    <button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-3">SIMPAN INFO SURVEI</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL EDITOR SOAL TKA / SURVEI -->
+<!-- MODAL EDITOR SOAL TKA / SURVEI (DINAMIS) -->
 <div class="modal fade" id="modalQ" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content bg-light">
@@ -260,10 +269,25 @@
             </div>
             <div class="modal-body p-2 p-md-4">
                 <div class="container" style="max-width:900px">
-                    <div class="alert alert-warning small mb-3 border-0 shadow-sm" id="editor-tips"><i class="fas fa-lightbulb me-2"></i><b>Tips:</b> Gunakan tombol <b>Rumus</b> atau <b>Video</b> pada panel editor di bawah.</div>
+                    <div class="alert alert-warning small mb-3 border-0 shadow-sm" id="editor-tips"><i class="fas fa-lightbulb me-2"></i><b>Tips:</b> Gunakan tombol <b>Rumus</b> di panel editor.</div>
                     <div id="q-list-container"></div>
                     <div class="text-center mt-5 mb-5"><button class="btn btn-lg btn-success rounded-pill px-5 shadow fw-bold" onclick="addNewQuestionBlock()"><i class="fas fa-plus-circle me-2"></i> TAMBAH BLOK BARU</button></div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PREVIEW HTML (ANTI POPUP BLOCKER) -->
+<div class="modal fade" id="modalPreviewQ" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-desktop me-2"></i> Preview Kumpulan Soal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light" id="preview-q-body" style="padding: 30px;">
+                <!-- Konten Di Render Disini -->
             </div>
         </div>
     </div>
@@ -361,8 +385,7 @@ let activeExamId = null; let timerInt, monitorInterval, autosaveInterval;
 let totalQ = 0; let currentQuestionsData = []; let currentQIdx = 0;
 let recapAllData = []; let recapDataStore = {};
 let violationCount = 0; const maxViolations = 3; let isExamFinished = false; let violationLock = false;
-
-let isSurveyMode = false; // Flag mode Editor (TKA atau Survei)
+let isSurveyMode = false;
 
 const MathButton = function (context) {
     const ui = $.summernote.ui;
@@ -401,6 +424,7 @@ $(document).ready(() => {
     const savedUser = localStorage.getItem('cbt_user');
     if(!savedUser) { window.location.href = '/'; return; }
     user = JSON.parse(savedUser);
+    $('#logo-container img').attr('src', user.LogoUrl || 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq');
     initDash(); checkResumeExam();
 });
 
@@ -503,31 +527,29 @@ function renderUsers(users) {
     h += `</tbody></table></div></div></div>`; $('#content-area').html(h);
 }
 
-function printHTML(title, content) {
-    const win = window.open('', '_blank');
+// METODE BLOB PDF FIX
+function downloadHTMLToPDF(filename, htmlContent) {
     const html = `<!DOCTYPE html><html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <title>${title} - KKGMI Surabaya 10</title>
-        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
-        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
-        <style>
-            body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 30px; color: #1e293b; }
-            .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-            img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
-            .q-box { page-break-inside: avoid; border-bottom: 2px dashed #e2e8f0; padding-bottom: 25px; margin-bottom: 25px; }
-            .kop { display: flex; align-items: center; border-bottom: 3px solid #064e3b; padding-bottom: 15px; margin-bottom: 30px; }
-            .kop img { width: 70px; height: 70px; margin-right: 20px; }
-            .kop h2 { margin: 0; font-size: 24px; color: #064e3b; }
-            .kop p { margin: 0; color: #64748b; }
-            @media print {
-                body { padding: 0; background-color: #fff; }
-                .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
-                .no-print { display: none; }
-            }
-        </style>
-    </head>
+    <head><meta charset="UTF-8"><title>${filename}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
+    <style>
+        body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
+        .q-box { border-bottom: 2px dashed #e2e8f0; padding-bottom: 25px; margin-bottom: 25px; }
+        .kop { display: flex; align-items: center; border-bottom: 3px solid #064e3b; padding-bottom: 15px; margin-bottom: 30px; }
+        .kop img { width: 70px; height: 70px; margin-right: 20px; }
+        .kop h2 { margin: 0; font-size: 24px; color: #064e3b; }
+        .kop p { margin: 0; color: #64748b; }
+        @media print {
+            body { padding: 0; background-color: #fff; }
+            .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
+            .no-print { display: none; }
+            .q-box { page-break-inside: avoid; }
+        }
+    </style></head>
     <body>
         <div class="no-print" style="text-align: right; margin-bottom: 20px;">
             <button onclick="window.print()" style="padding: 12px 25px; background: #0f5132; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Poppins', sans-serif;">Cetak / Simpan PDF</button>
@@ -535,9 +557,9 @@ function printHTML(title, content) {
         <div class="container">
             <div class="kop">
                 <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo">
-                <div><h2>DOKUMEN UJIAN KKGMI SURABAYA 10</h2><p>${title}</p></div>
+                <div><h2>DOKUMEN UJIAN KKGMI SURABAYA 10</h2><p>${filename}</p></div>
             </div>
-            ${content}
+            ${htmlContent}
         </div>
         <script>
             window.onload = function() {
@@ -546,7 +568,9 @@ function printHTML(title, content) {
             }
         <\/script>
     </body></html>`;
-    win.document.write(html); win.document.close();
+    
+    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${filename}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
 function printFilteredRecap() {
@@ -570,7 +594,7 @@ function printFilteredRecap() {
       <p style="margin-bottom:70px;">Guru Pengampu / Pengawas</p>
       <p><strong>${namaPengawas}</strong></p>
   </div>`;
-  printHTML('Cetak Rekap Nilai', content);
+  downloadHTMLToPDF('Rekap_Nilai', content);
 }
 
 function printRecap(rid) {
@@ -608,7 +632,7 @@ function printRecap(rid) {
       <p><strong>${namaPengawas}</strong></p>
   </div>
   `;
-  printHTML(`Hasil Ujian - ${d.nama}`, content);
+  downloadHTMLToPDF(`Hasil_Ujian_${d.nama}`, content);
 }
 
 
@@ -778,7 +802,11 @@ function renderContent(page) {
              </div><div class="row g-4">`;
         surveys.forEach(s => {
             let statusBadge = s.ShowStats === 'Aktif' ? '<span class="badge bg-success shadow-sm px-3 py-2 rounded-pill">Aktif (Auto Muncul)</span>' : '<span class="badge bg-secondary shadow-sm px-3 py-2 rounded-pill">Tidak Aktif</span>';
-            h += `<div class="col-md-6 col-xl-4"><div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden"><div class="card-body p-4"><div class="d-flex justify-content-between mb-3">${statusBadge}</div><h5 class="fw-bold text-dark mb-2">${s.Judul}</h5><p class="small text-muted mb-4 line-clamp-2">${s.TargetKelas}</p><div class="d-flex gap-2 mt-auto"><button class="btn btn-sm btn-outline-dark flex-fill rounded-pill fw-bold" onclick="openSurveyModal('${encodeURIComponent(JSON.stringify(s))}')"><i class="fas fa-cog"></i> Pengaturan</button> <button class="btn btn-sm btn-outline-primary flex-fill rounded-pill fw-bold" onclick="manageQ('${s.ExamID}')"><i class="fas fa-list"></i> Isi Kuesioner</button> <button class="btn btn-sm btn-danger rounded-circle px-2" onclick="delExam('${s.ExamID}')"><i class="fas fa-trash"></i></button></div></div></div></div>`;
+            let linkedExamName = 'Tidak Terhubung';
+            const linkedTKA = gData.exams.find(ex => ex.ExamID === s.Token);
+            if(linkedTKA) linkedExamName = linkedTKA.Judul;
+            
+            h += `<div class="col-md-6 col-xl-4"><div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden"><div class="card-body p-4"><div class="d-flex justify-content-between mb-3">${statusBadge}</div><h5 class="fw-bold text-dark mb-2">${s.Judul}</h5><p class="small text-muted mb-3 line-clamp-2">${s.TargetKelas}</p><div class="mb-4 small p-2 bg-light rounded"><i class="fas fa-link text-primary"></i> <b>Terkait:</b> ${linkedExamName}</div><div class="d-flex gap-2 mt-auto"><button class="btn btn-sm btn-outline-dark flex-fill rounded-pill fw-bold" onclick="openSurveyModal('${encodeURIComponent(JSON.stringify(s))}')"><i class="fas fa-cog"></i> Pengaturan</button> <button class="btn btn-sm btn-outline-primary flex-fill rounded-pill fw-bold" onclick="manageQ('${s.ExamID}')"><i class="fas fa-list"></i> Isi Kuesioner</button> <button class="btn btn-sm btn-danger rounded-circle px-2" onclick="delExam('${s.ExamID}')"><i class="fas fa-trash"></i></button></div></div></div></div>`;
         });
         h += '</div>';
     }
@@ -846,14 +874,21 @@ function filterAdminUjian() {
 }
 
 function openSurveyModal(str) {
+    let optExams = `<option value="">-- Pilih Ujian TKA Yang Relevan --</option>`;
+    gData.exams.forEach(e => { optExams += `<option value="${e.ExamID}">${e.Judul} (${e.Mapel})</option>`; });
+    $('#srv-linked-exam').html(optExams);
+
     $('#modalSurvey').modal('show'); let d = null;
     if(str) {
         d = JSON.parse(decodeURIComponent(str));
         $('#srv-id').val(d.ExamID); $('#srv-judul').val(d.Judul); $('#srv-desc').val(d.TargetKelas); $('#srv-status').val(d.ShowStats);
+        $('#srv-linked-exam').val(d.Token);
     } else { $('#modalSurvey form')[0].reset(); $('#srv-id').val(''); }
 }
 function saveSurveyHeader() {
-    const d = { id: $('#srv-id').val(), judul: $('#srv-judul').val(), desc: $('#srv-desc').val(), status: $('#srv-status').val(), userId: user.ID };
+    const d = { id: $('#srv-id').val(), judul: $('#srv-judul').val(), desc: $('#srv-desc').val(), status: $('#srv-status').val(), linkedExam: $('#srv-linked-exam').val(), userId: user.ID };
+    if(!d.linkedExam) return Swal.fire('Error', 'Wajib memilih Ujian TKA mana yang akan memicu survei ini!', 'warning');
+    
     showLoad(true);
     google.script.run.withSuccessHandler((res) => {
         if(res.status === 'success') {
@@ -929,8 +964,8 @@ function loadQList() {
         if(!isSurveyMode) {
             topActions = `<div class="d-flex justify-content-end mb-3 gap-2 flex-wrap bg-white p-3 rounded-4 shadow-sm border">
                 <label class="btn btn-outline-success shadow-sm m-0 rounded-pill px-4 fw-bold"><i class="fas fa-upload me-2"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadQuestionsExcel(event)"></label>
-                <button class="btn btn-info text-white shadow-sm rounded-pill px-4 fw-bold" onclick="previewAllQ()"><i class="fas fa-eye me-2"></i> Preview Semua</button>
-                <button class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold" onclick="downloadAllQ()"><i class="fas fa-file-pdf me-2"></i> Download PDF</button>
+                <button class="btn btn-info text-white shadow-sm rounded-pill px-4 fw-bold" onclick="previewAllQ()"><i class="fas fa-desktop me-2"></i> Preview Soal</button>
+                <button class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold" onclick="downloadAllQ()"><i class="fas fa-file-pdf me-2"></i> Download HTML/PDF</button>
             </div>`;
         }
         
@@ -942,6 +977,60 @@ function loadQList() {
         } else { $('#q-list-container').html(topActions + '<div class="alert alert-info text-center rounded-4 shadow-sm mt-4"><i class="fas fa-info-circle fa-2x mb-2 d-block"></i>Belum ada data. Silakan klik Tambah Baru.</div>'); }
     }).getExamQuestions(activeExamId);
 }
+
+function generateQHTML(q) {
+    let inp = '';
+    if(q.Tipe==='PGKK') {
+        const opts = JSON.parse(q.Options||"[]");
+        inp = `<table style="width:100%; border-collapse: collapse; margin-top:15px; background:white;" border="1"><thead><tr style="background:#f8f9fa;"><th style="padding:10px; text-align:left;">PERNYATAAN</th><th width="15%" style="padding:10px; text-align:center;">BENAR</th><th width="15%" style="padding:10px; text-align:center;">SALAH</th></tr></thead><tbody>`;
+        opts.forEach((o,x)=> { inp+=`<tr><td style="padding:10px;">${o}</td><td style="padding:10px; text-align:center; vertical-align:middle;"><input type="radio" name="ans-${q.QID}-${x}" value="B" style="transform:scale(1.2);"></td><td style="padding:10px; text-align:center; vertical-align:middle;"><input type="radio" name="ans-${q.QID}-${x}" value="S" style="transform:scale(1.2);"></td></tr>`; });
+        inp += `</tbody></table>`;
+    } else if(q.Tipe==='Menjodohkan') {
+        const lItems = JSON.parse(q.Options||"[]"); let rItems = [];
+        try { rItems = [...JSON.parse(q.Key||"[]")].sort(() => Math.random() - 0.5); } catch(e){}
+        inp = `<div style="display:flex; justify-content:space-between; gap:20px; margin-top:15px;"><div style="flex:1; display:flex; flex-direction:column; gap:10px;">${lItems.map((t)=>`<div style="border:2px solid #e2e8f0; padding:10px; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${t}</div>`).join('')}</div><div style="flex:1; display:flex; flex-direction:column; gap:10px;">${rItems.map((t)=>`<div style="border:2px solid #e2e8f0; padding:10px; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.1);">${t}</div>`).join('')}</div></div>`;
+    } else if(q.Tipe.includes('PG')) {
+        const opts = JSON.parse(q.Options||"[]");
+        opts.forEach(o => { inp += `<label style="display:flex; align-items:center; border:1px solid #e2e8f0; padding:15px; margin-bottom:10px; border-radius:8px; background:#fff; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05);"><input type="${q.Tipe==='PGK'?'checkbox':'radio'}" name="ans-${q.QID}" style="margin-right:15px; transform:scale(1.5);"><div style="flex-grow:1; margin:0;">${o}</div></label>`; });
+    } else {
+        inp = `<textarea style="width:100%; padding:15px; border:1px solid #e2e8f0; border-radius:8px; font-family:inherit; resize:vertical;" rows="5" placeholder="Ketik jawaban di sini..."></textarea>`;
+    }
+    return `<div style="font-family: 'Poppins', Arial, sans-serif; padding:15px 0; margin-bottom:20px;"><div style="background:#0f5132; color:white; display:inline-block; padding:5px 15px; border-radius:15px; font-size:13px; font-weight:bold; margin-bottom:15px;">Soal No. ${q.Nomor||''}</div><div style="margin-bottom:20px; font-size:16px; line-height:1.6; word-wrap: break-word;">${q.Pertanyaan}</div>${inp}</div>`;
+}
+
+// UPDATE FUNGSI PREVIEW SECARA IN-PAGE MODAL AGAR BEBAS POPUP BLOCKER
+function previewAllQ() {
+    let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:15px; margin-bottom:15px;">${generateQHTML(q)}</div>`; });
+    if(!htmlContent) return Swal.fire('Kosong', 'Belum ada soal untuk dipreview.', 'info');
+    if($('#modalPreviewQ').length === 0) {
+        $('body').append(`<div class="modal fade" id="modalPreviewQ" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header bg-info text-white"><h5 class="modal-title fw-bold"><i class="fas fa-desktop me-2"></i> Preview Seluruh Soal</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light" id="preview-q-body" style="padding:30px;"></div></div></div></div>`);
+    }
+    $('#preview-q-body').html(htmlContent); $('#modalPreviewQ').modal('show'); applyMathJax();
+}
+
+// UPDATE FUNGSI DOWNLOAD SOAL LANGSUNG DOWNLOAD FILE HTML TANPA WINDOW.OPEN
+function downloadAllQ() {
+    let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
+    if(!htmlContent) return Swal.fire('Kosong', 'Belum ada soal untuk didownload.', 'info');
+    const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Arsip Soal</title><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet"><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script><style>body { font-family: 'Poppins', Arial, sans-serif; background-color: #f1f5f9; padding: 40px; margin: 0; display:flex; justify-content:center; } .container { max-width: 800px; width: 100%; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); } img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; } @media print { body{padding:0;} .container{box-shadow:none;} }</style></head><body><div style="text-align:right; margin-bottom:20px;" class="no-print"><button onclick="window.print()" style="padding:10px 20px; background:#0f5132; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak PDF</button></div><div class="container">${htmlContent}</div><script>window.onload = function() { setTimeout(window.print, 1000); }<\/script></body></html>`;
+    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `Arsip_Soal_CBT.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function downloadAllQAdmin(eid) {
+    showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        showLoad(false);
+        if(res.status === 'success') {
+            let htmlContent = '';
+            res.data.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
+            const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Arsip Soal</title><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet"><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script><style>body { font-family: 'Poppins', Arial, sans-serif; background-color: #f1f5f9; padding: 40px; margin: 0; display:flex; justify-content:center; } .container { max-width: 800px; width: 100%; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); } img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; } @media print { body{padding:0;} .container{box-shadow:none;} }</style></head><body><div style="text-align:right; margin-bottom:20px;" class="no-print"><button onclick="window.print()" style="padding:10px 20px; background:#0f5132; color:white; border:none; border-radius:5px; cursor:pointer;">Cetak PDF</button></div><div class="container">${htmlContent}</div><script>window.onload = function() { setTimeout(window.print, 1000); }<\/script></body></html>`;
+            const blob = new Blob([html], {type: "text/html;charset=utf-8"}); const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = `Arsip_Soal_Guru.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        } else { Swal.fire('Error', res.msg, 'error'); }
+    }).getSiswaSoal(eid);
+}
+
 function addNewQuestionBlock() {
     lastQuestionNum++; const newBlock = renderQuestionBlock({ Nomor: lastQuestionNum, Tipe: isSurveyMode ? 'SURVEY' : 'PGS' }, lastQuestionNum - 1);
     $('#q-list-container').append(newBlock); const uid = $(newBlock).attr('data-id');
@@ -1001,13 +1090,14 @@ return `
         </div>
     </div>`;
 }
+
 function toggleEditQ(uid) { 
     const form = $(`#form-${uid}`); 
     if (form.hasClass('hidden')) { 
         activeUid = uid; form.removeClass('hidden'); $(`#block-${uid}`).addClass('border-primary'); 
         $(`#sn-${uid}`).summernote(snConfig); 
+        
         if(isSurveyMode) {
-            // Restore proper scale dropdown based on Key saved
             let qData = {}; try { qData = JSON.parse(decodeURIComponent($(`#block-${uid}`).attr('data-q-obj'))); } catch(e){}
             let savedKeys = JSON.parse(qData.Key || "[]");
             if(savedKeys.length > 0) {
@@ -1022,6 +1112,7 @@ function toggleEditQ(uid) {
         $(`#sn-${uid}`).summernote('destroy'); $(`#ans-area-${uid} .summernote-opt`).each(function(){ $(this).summernote('destroy'); }); 
     } 
 }
+
 function renderAnsFields(uid, type, surveyScaleKey = null) { 
     const block = $(`#block-${uid}`); let qData = {}; 
     try { qData = JSON.parse(decodeURIComponent(block.attr('data-q-obj')) || '{}'); } catch(e){} 
@@ -1038,30 +1129,37 @@ function renderAnsFields(uid, type, surveyScaleKey = null) {
         if(opts.length) opts.forEach(o => h+=genOptRow(uid, inputType, o, keys.map(k=>k.trim()).includes(o.trim())?'checked':''));
         else h+=genOptRow(uid, inputType); h+='</div>'; 
     } else if (type === 'PGKK') { 
-        h = `<table class="table table-bordered bg-white rounded-3 overflow-hidden"><thead><tr class="table-light"><th>Pernyataan Detail</th><th width="150">Kunci Benar/Salah</th><th width="50">X</th></tr></thead><tbody id="pgkk-tbody-${uid}">`; 
-        if(opts.length) opts.forEach((o,i)=>h+=genPGKKRow(o,keys[i])); else h+=genPGKKRow(); h+=`</tbody></table><button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm mt-2" onclick="addPGKKRowTo('${uid}')"><i class="fas fa-plus"></i> Tambah Baris</button>`; 
+        h = `<table class="table table-sm"><thead><tr><th>Pernyataan Detail</th><th width="150">Kunci Benar/Salah</th><th width="50">X</th></tr></thead><tbody id="pgkk-tbody-${uid}">`; 
+        if(opts.length) opts.forEach((o,i)=>h+=genPGKKRow(o,keys[i])); else h+=genPGKKRow(); h+=`</tbody></table><button type="button" class="btn btn-sm btn-info rounded-pill px-3 text-white" onclick="addPGKKRowTo('${uid}')"><i class="fas fa-plus"></i> Tambah Baris</button>`; 
     } else if (type === 'Menjodohkan') { 
-        h = `<table class="table table-bordered bg-white rounded-3 overflow-hidden"><thead><tr class="table-light"><th>Soal Kiri</th><th>Jawaban Kanan (Kunci)</th><th width="50">X</th></tr></thead><tbody id="match-tbody-${uid}">`;
-        if(opts.length) opts.forEach((o,i)=>h+=genMatchRow(o,keys[i])); else h+=genMatchRow(); h+=`</tbody></table><button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm mt-2" onclick="addMatchRowTo('${uid}')"><i class="fas fa-plus"></i> Tambah Pasangan</button>`;
+        h = `<table class="table table-sm"><thead><tr><th>Soal Kiri</th><th>Jawaban Kanan (Kunci)</th><th width="50">X</th></tr></thead><tbody id="match-tbody-${uid}">`;
+        if(opts.length) opts.forEach((o,i)=>h+=genMatchRow(o,keys[i])); else h+=genMatchRow(); h+=`</tbody></table><button type="button" class="btn btn-sm btn-info rounded-pill px-3 text-white" onclick="addMatchRowTo('${uid}')"><i class="fas fa-plus"></i> Tambah Pasangan</button>`;
     } else if (type === 'Uraian') { 
         h = `<label class="small text-muted mb-2">Kata Kunci Penilaian (Pisahkan dengan koma)</label><textarea class="form-control rounded-3 bg-white" name="essay_key" placeholder="Contoh: presiden, jakarta, indonesia" rows="3">${keys.join(',')}</textarea>`; 
     } 
     $(`#ans-area-${uid}`).html(h);
     if(type !== 'SURVEY') $(`#ans-area-${uid} .summernote-opt`).summernote(snConfig); 
 }
+
 function genSurveyRow(q='') { return `<tr><td><input type="text" class="form-control border-0 bg-light srv-q" placeholder="Ketik pernyataan..." value="${q.replace(/"/g, '&quot;')}"></td><td class="text-center align-middle"><button class="btn btn-danger btn-sm rounded-circle" onclick="$(this).closest('tr').remove()"><i class="fas fa-times"></i></button></td></tr>`; }
 function genOptRow(uid, type, val='', checked='') { return `<div class="d-flex align-items-start mb-3 ans-row gap-3 bg-white p-3 rounded-3 border shadow-sm"><div class="mt-2 text-center"><input type="${type}" name="k_${uid}" class="form-check-input" style="width: 25px; height: 25px;" ${checked}><br><small class="text-success fw-bold">KUNCI</small></div><div class="flex-grow-1"><textarea class="summernote-opt">${val}</textarea></div><button type="button" class="btn btn-outline-danger mt-1 rounded-circle shadow-sm" onclick="removeOptRow(this)"><i class="fas fa-times"></i></button></div>`; }
 function genPGKKRow(q='', k='B') { return `<tr><td><textarea class="summernote-opt pgkk-q">${q}</textarea></td><td class="text-center align-middle"><select class="form-select bg-light border-0 fw-bold text-primary pgkk-k"><option value="B" ${k=='B'?'selected':''}>BENAR</option><option value="S" ${k=='S'?'selected':''}>SALAH</option></select></td><td class="text-center align-middle"><button class="btn btn-danger btn-sm rounded-circle" onclick="$(this).closest('tr').remove()"><i class="fas fa-times"></i></button></td></tr>`; }
 function genMatchRow(l='', r='') { return `<tr><td><textarea class="summernote-opt match-l">${l}</textarea></td><td><textarea class="summernote-opt match-r">${r}</textarea></td><td class="text-center align-middle"><button class="btn btn-danger btn-sm rounded-circle" onclick="$(this).closest('tr').remove()"><i class="fas fa-times"></i></button></td></tr>`; }
+
 function addSurveyRowTo(uid) { $(`#srv-tbody-${uid}`).append(genSurveyRow()); }
 function addOptRow(uid, t) { const el = $(genOptRow(uid, t)); $(`#opts-wrap-${uid}`).append(el); el.find('.summernote-opt').summernote(snConfig); }
 function addPGKKRowTo(uid) { const el = $(genPGKKRow()); $(`#pgkk-tbody-${uid}`).append(el); el.find('.summernote-opt').summernote(snConfig); }
 function addMatchRowTo(uid) { const el = $(genMatchRow()); $(`#match-tbody-${uid}`).append(el); el.find('.summernote-opt').summernote(snConfig); }
 function removeOptRow(btn) { $(btn).closest('.ans-row').remove(); }
+
 function saveQBlock(uid) {
-    const form = $(`#frm-q-${uid}`); const type = form.find('input[name="type"]').length ? form.find('input[name="type"]').val() : form.find('select[name="type"]').val(); const text = $(`#sn-${uid}`).summernote('code');
-    const score = isSurveyMode ? 0 : form.find('input[name="score"]').val(); const num = form.find('input[name="num"]').val();
-    const id = form.find('input[name="id"]').val(); let opts=[], keys=[], keyIndices=[];
+    const form = $(`#frm-q-${uid}`); 
+    const type = form.find('input[name="type"]').length ? form.find('input[name="type"]').val() : form.find('select[name="type"]').val(); 
+    const text = $(`#sn-${uid}`).summernote('code');
+    const score = isSurveyMode ? 0 : form.find('input[name="score"]').val(); 
+    const num = form.find('input[name="num"]').val();
+    const id = form.find('input[name="id"]').val(); 
+    let opts=[], keys=[], keyIndices=[];
     
     if (type === 'SURVEY') {
         const scaleKey = $(`#survey-scale-${uid}`).val();
@@ -1080,6 +1178,7 @@ function saveQBlock(uid) {
     
     const payload={id:id, num:num, type:type, text:text, options:opts, key:keys, keyIndices:keyIndices, score:score}; 
     const btn=form.find('button[type="submit"]'); btn.prop('disabled',true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+    
     google.script.run.withSuccessHandler(res=>{
         btn.prop('disabled',false).html('<i class="fas fa-save me-1"></i> Simpan Data');
         if(res.status==='success'){
@@ -1094,13 +1193,15 @@ function saveQBlock(uid) {
         } else Swal.fire('Error',res.msg,'error');
     }).adminSaveSingleQuestion(activeExamId, payload, user.ID);
 }
+
 function deleteQBlock(uid) {
     const id=$(`#block-${uid}`).find('input[name="id"]').val();
     if(!id){ $(`#block-${uid}`).remove(); return; }
-    Swal.fire({title:'Hapus Data Permanen?',icon:'warning',showCancelButton:true, confirmButtonColor: '#d33'}).then(r=>{
+    Swal.fire({title:'Hapus Permanen?',icon:'warning',showCancelButton:true, confirmButtonColor: '#d33'}).then(r=>{
         if(r.isConfirmed){ $(`#block-${uid}`).fadeOut(); google.script.run.adminDeleteQuestion(id); currentQuestionsData = currentQuestionsData.filter(q => String(q.QID) !== String(id)); }
     });
 }
+
 function startExam(eid) {
     const rules = `<div class="text-start small mt-3">
         <h6 class="fw-bold text-danger"><i class="fas fa-exclamation-triangle"></i> TATA CARA & ATURAN UJIAN:</h6><br>
@@ -1128,6 +1229,7 @@ function startExam(eid) {
         }
     });
 }
+
 function enableSecurity() { 
     violationCount = 0; isExamFinished = false; violationLock = false; 
     document.addEventListener("visibilitychange", handleVisibilityChange); 
@@ -1246,6 +1348,7 @@ function jump(i) {
 }
 
 function navSlide(dir) { let next = currentQIdx + dir; if(next >= 0 && next < totalQ) jump(next); }
+
 function submitExamButton(force = false) {
     if (examSubmitting) return;
     if (force) { processSubmission(); return; }
@@ -1269,6 +1372,7 @@ function submitExamButton(force = false) {
         }
     }).then((result) => { if (result.isConfirmed) { processSubmission(); } });
 }
+
 function processSubmission(retryCount = 0) {
     if (examSubmitting && retryCount === 0) return;
     examSubmitting = true;
@@ -1297,36 +1401,33 @@ function processSubmission(retryCount = 0) {
         examSubmitting = false; btn.prop('disabled', false).html(originalText);
         if (res.status === 'success') {
             localStorage.removeItem('cbt_active_exam'); localStorage.removeItem(`ANS_${user.ID}_${activeExamId}`);
-            try { document.exitFullscreen().catch(()=>{}) } catch (e) {};
             
-            // FUNGSI CEK SURVEI AKTIF SETELAH TKA SELESAI
             showLoad(true);
             google.script.run.withSuccessHandler(surveyRes => {
                 showLoad(false);
                 if(surveyRes.status === 'success' && surveyRes.data) {
-                    $('body').removeClass('exam-mode');
-                    $('#view-exam').addClass('hidden');
+                    $('body').removeClass('exam-mode'); $('#view-exam').addClass('hidden');
                     $('#view-countdown').removeClass('hidden');
                     window.activeSurveyData = surveyRes.data;
                     startCountdown();
                 } else {
-                    $('body').removeClass('exam-mode');
+                    $('body').removeClass('exam-mode'); try { document.exitFullscreen().catch(()=>{}) } catch (e) {};
                     Swal.fire({
                         title: 'Hebat, Selesai!',
-                        html: `<div class="mb-3 text-success" style="font-size: 5rem;"><i class="fas fa-check-circle"></i></div><h5 class="fw-bold">${res.msg === 'Sudah dikirim.' ? 'Anda Sudah Pernah Mengirim Jawaban Sebelumnya' : violationCount >= maxViolations ? 'Jawaban Otomatis Terkirim Karena Pelanggaran' : 'Jawaban Berhasil Dikirim Aman ke Server'}</h5><p class="text-muted mt-2">Terima kasih. Anda boleh keluar dari aplikasi.</p>`,
+                        html: `<div class="mb-3 text-success" style="font-size: 5rem;"><i class="fas fa-check-circle"></i></div><h5 class="fw-bold">Ujian Telah Terkirim Aman ke Server</h5><p class="text-muted mt-2">Terima kasih. Anda boleh keluar dari aplikasi.</p>`,
                         confirmButtonText: 'KEMBALI KE BERANDA', confirmButtonColor: '#0f5132', allowOutsideClick: false, allowEscapeKey: false
                     }).then(() => { $('#view-exam').addClass('hidden'); $('#view-dashboard').removeClass('hidden'); loadPage('siswa-home'); });
                 }
-            }).checkActiveSurvey();
+            }).checkActiveSurvey(activeExamId);
             
         } else { Swal.fire('Gagal', res.msg || 'Terjadi kesalahan sistem.', 'error'); }
     }).withFailureHandler((err) => {
         if (retryCount < 3) { setTimeout(() => processSubmission(retryCount + 1), 3000); } 
-        else { examSubmitting = false; btn.prop('disabled', false).html(originalText); Swal.fire('Koneksi Terputus', 'Gagal menghubungi server setelah beberapa percobaan. Silakan coba klik Kirim lagi saat sinyal baik.', 'error'); }
+        else { examSubmitting = false; btn.prop('disabled', false).html(originalText); Swal.fire('Koneksi Terputus', 'Gagal menghubungi server setelah beberapa percobaan.', 'error'); }
     }).submitExam(user.ID, activeExamId, ans, violationCount);
 }
 
-// ---------------- ALUR SURVEI EVALUASI ----------------
+// ---------------- ALUR SURVEI EVALUASI (Countdown -> Tampil -> Kirim) ----------------
 let countdownTimer;
 function startCountdown() {
     let timeLeft = 30;
@@ -1336,7 +1437,12 @@ function startCountdown() {
         if(timeLeft <= 0) { skipCountdown(); }
     }, 1000);
 }
-function skipCountdown() { clearInterval(countdownTimer); $('#view-countdown').addClass('hidden'); renderSurveyForm(); }
+
+function skipCountdown() { 
+    clearInterval(countdownTimer); 
+    $('#view-countdown').addClass('hidden'); 
+    renderSurveyForm(); 
+}
 
 function renderSurveyForm() {
     $('#view-survey').removeClass('hidden');
@@ -1346,7 +1452,7 @@ function renderSurveyForm() {
     window.activeSurveyData.qs.forEach((q, qIdx) => {
         let scales = JSON.parse(q.Key || "[]");
         let statements = JSON.parse(q.Options || "[]");
-        h += `<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><div class="mb-4" style="font-size:16px;">${q.Pertanyaan}</div><div class="table-responsive"><table class="table table-bordered table-striped align-middle"><thead class="table-light"><tr><th>Pernyataan Detail</th>`;
+        h += `<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><div class="mb-4 survey-stimulus" style="font-size:16px;">${q.Pertanyaan}</div><div class="table-responsive"><table class="table table-bordered table-striped align-middle"><thead class="table-light"><tr><th>Pernyataan Detail</th>`;
         scales.forEach(s => h+= `<th class="text-center" style="width:100px;">${s}</th>`);
         h += `</tr></thead><tbody>`;
         statements.forEach((stmt, sIdx) => {
@@ -1376,6 +1482,7 @@ function submitSurvey() {
     showLoad(true);
     google.script.run.withSuccessHandler(res => {
         showLoad(false); $('#view-survey').addClass('hidden');
+        try { document.exitFullscreen().catch(()=>{}) } catch (e) {};
         Swal.fire({ title: 'Terima Kasih!', text: 'Respon evaluasi survei Anda telah kami terima dengan baik.', icon: 'success', confirmButtonColor: '#0f5132', allowOutsideClick: false }).then(() => {
             $('#view-dashboard').removeClass('hidden'); loadPage('siswa-home');
         });
