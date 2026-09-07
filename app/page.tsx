@@ -47,14 +47,15 @@ export default function Page() {
       <div style={{
         fontFamily: "'Poppins', sans-serif",
         minHeight: '100vh',
+        width: '100vw',
+        margin: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        /* Perpaduan Hijau dan Emas yang elegan */
+        /* Gradasi Hijau Keemasan Kemenag */
         background: "linear-gradient(135deg, #0f5132 0%, #d4af37 100%)",
-        padding: '20px',
-        margin: 0
+        padding: '20px'
       }}>
         
         <div style={{
@@ -77,7 +78,7 @@ export default function Page() {
               width="90" 
               alt="Logo KKGMI" 
             />
-            <h4 className="fw-bold text-center" style={{ color: '#0d6efd', fontSize: '22px' }}>
+            <h4 className="fw-bold text-center" style={{ color: '#0f5132', fontSize: '22px' }}>
               KKGMI SURABAYA 10
             </h4>
           </div>
@@ -112,7 +113,7 @@ export default function Page() {
               ></i>
             </div>
 
-            {/* Hapus atribut "required" agar Guru/Admin tidak wajib isi TTL */}
+            {/* Input Tanggal Lahir dibuat opsional (tanpa required) */}
             <div className="form-floating mb-4">
               <input 
                 type="date" 
@@ -120,14 +121,14 @@ export default function Page() {
                 value={tglLahir} 
                 onChange={(e) => setTglLahir(e.target.value)} 
               />
-              <label>Tanggal Lahir (Khusus Siswa)</label>
+              <label>Tanggal Lahir (Kosongkan jika Guru)</label>
             </div>
 
             <button 
               type="submit" 
               disabled={loading} 
               className="btn btn-primary w-100 py-3 fw-bold shadow-sm"
-              style={{ backgroundColor: '#0d6efd', borderColor: '#0d6efd', fontSize: '16px', borderRadius: '8px' }}
+              style={{ backgroundColor: '#0f5132', borderColor: '#0f5132', fontSize: '16px', borderRadius: '8px' }}
             >
               {loading ? 'MEMPROSES...' : 'MASUK SEKARANG'}
             </button>

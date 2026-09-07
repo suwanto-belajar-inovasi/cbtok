@@ -6,7 +6,6 @@ export async function POST(req) {
   try {
     const { username, password, tglLahir } = await req.json();
 
-    // Query hanya mencari Username dan Password terlebih dahulu
     const result = await turso.execute({
       sql: "SELECT * FROM Users WHERE Username = ? AND Password = ?",
       args: [username, password]
@@ -16,7 +15,7 @@ export async function POST(req) {
       const user = result.rows[0];
       const role = String(user.Role).trim().toLowerCase();
 
-      // Jika role adalah Siswa, wajib cek kecocokan Tanggal Lahir
+      // Cek Tanggal Lahir HANYA jika yang login adalah siswa
       if (role === 'siswa' && user.TglLahir !== tglLahir) {
         return NextResponse.json({ status: 'error', msg: 'Tanggal Lahir salah untuk akun Anda!' });
       }
