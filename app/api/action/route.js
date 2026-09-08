@@ -263,9 +263,10 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
-    // MEMPERBAIKI MASALAH HASIL NILAI LOADING TERUS
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
+      
+      // PERBAIKAN: Parameterized Query untuk menghindari Error Loading
       let sql = `
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
@@ -281,6 +282,7 @@ export async function POST(req) {
           sql += ` AND e.PembuatID = ? AND u.Sekolah = ?`;
           pArgs.push(userId, sekolah);
       }
+      
       const results = await turso.execute({ sql: sql, args: pArgs });
       return NextResponse.json({ status: 'success', data: results.rows });
     }
