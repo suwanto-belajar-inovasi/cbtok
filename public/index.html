@@ -490,6 +490,58 @@ function loadPage(page) {
 
 function encodeImageFileAsURL(element) { let file = element.files[0]; let reader = new FileReader(); reader.onloadend = function() { $('#mu-foto-b64').val(reader.result); }; if(file) reader.readAsDataURL(file); }
 
+    function renderMonitoring() {
+    let h = `<div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm border rounded-4">
+                <h5 class="fw-bold text-primary mb-0"><i class="fas fa-desktop me-2"></i>Live Monitoring Ujian</h5>
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" onclick="fetchLiveMonitor()"><i class="fas fa-sync-alt me-1"></i> Segarkan Manual</button>
+             </div>
+             <div class="row g-3" id="monitor-grid">
+                <div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Memuat status siswa...</p></div>
+             </div>`;
+    
+    $('#content-area').html(h);
+    fetchLiveMonitor();
+    
+    clearInterval(monitorInterval);
+    monitorInterval = setInterval(() => {
+        // Cek apakah elemen grid masih ada di layar. Jika pindah menu, hentikan interval.
+        if ($('#monitor-grid').length > 0) fetchLiveMonitor(true);
+        else clearInterval(monitorInterval);
+    }, 15000); // Polling setiap 15 detik
+}
+
+function fetchLiveMonitor(isSilent = false) {
+    if(!isSilent) showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        if(!isSilent) showLoad(false);
+        if(res.status === 'success') {
+            let h = '';
+            if(res.data.length === 0) h = '<div class="col-12 alert alert-light text-center py-4 border shadow-sm rounded-4">Belum ada siswa terpantau.</div>';
+            
+            res.data.forEach(u => {
+                let pct = u.total > 0 ? Math.round((u.terjawab / u.total) * 100) : 0;
+                let statusColor = u.status === 'Offline' ? 'bg-secondary' : (pct === 100 ? 'bg-success' : 'bg-primary');
+                
+                h += `<div class="col-md-4 col-lg-3">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-dark text-truncate d-block" style="max-width: 70%;">${u.nama}</span> 
+                                    <span class="badge ${statusColor} rounded-pill">${u.status}</span>
+                                </div>
+                                <div class="small text-muted mb-2"><i class="fas fa-user-graduate me-1"></i> Kelas: ${u.kelas}</div>
+                                <div class="progress rounded-pill bg-light border" style="height: 12px;">
+                                    <div class="progress-bar ${statusColor}" style="width: ${pct}%"></div>
+                                </div>
+                                <div class="small text-end mt-2 fw-bold text-muted">${u.terjawab} / ${u.total} Dijawab</div>
+                            </div>
+                        </div>
+                      </div>`;
+            });
+            $('#monitor-grid').html(h);
+        }
+    }).getLiveMonitoring(user.ID, user.Role, user.Sekolah);
+}
 function renderUsers(users) {
     const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
     let h = `<div class="d-flex justify-content-between mb-3 flex-wrap gap-2 align-items-center">
@@ -588,37 +640,92 @@ function downloadAllQAdmin(eid) {
 }
 // Memuat tabel hasil nilai
 function renderRecapTable() {
+    // Menyiapkan opsi unik untuk dropdown filter
+    let uniqueSekolah = [...new Set(recapAllData.map(r => r.SekolahSiswa || ''))].filter(Boolean);
+    let uniqueUjian = [...new Set(recapAllData.map(r => r.JudulUjian || ''))].filter(Boolean);
+
     let h = `<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <h5 class="fw-bold text-primary mb-0"><i class="fas fa-chart-bar me-2"></i>Rekapitulasi Nilai</h5>
-                <button class="btn btn-success shadow-sm rounded-pill px-4 fw-bold" onclick="printFilteredRecap()"><i class="fas fa-print me-2"></i> Cetak Rekap</button>
+                <div>
+                    <button class="btn btn-danger shadow-sm rounded-pill px-4 fw-bold me-2 hidden" id="btn-bulk-delete" onclick="bulkDeleteResults()"><i class="fas fa-trash me-2"></i> Hapus Terpilih</button>
+                    <button class="btn btn-success shadow-sm rounded-pill px-4 fw-bold" onclick="printFilteredRecap()"><i class="fas fa-print me-2"></i> Cetak Rekap</button>
+                </div>
              </div>
+             
+             <!-- Filter Area -->
+             <div class="row g-2 mb-3 p-3 bg-white rounded-4 shadow-sm border">
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted ms-1">Cari Nama Siswa</label>
+                    <input type="text" id="filter-nama" class="form-control bg-light border-0 rounded-pill px-3" placeholder="Ketik nama..." onkeyup="applyFilterRecap()">
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted ms-1">Filter Sekolah</label>
+                    <select id="filter-sekolah" class="form-select bg-light border-0 rounded-pill px-3" onchange="applyFilterRecap()">
+                        <option value="">Semua Sekolah</option>
+                        ${uniqueSekolah.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted ms-1">Filter Ujian / Survei</label>
+                    <select id="filter-ujian" class="form-select bg-light border-0 rounded-pill px-3" onchange="applyFilterRecap()">
+                        <option value="">Semua Ujian</option>
+                        ${uniqueUjian.map(u => `<option value="${u}">${u}</option>`).join('')}
+                    </select>
+                </div>
+             </div>
+
+             <!-- Tabel Data -->
              <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
                                 <tr>
+                                    <th width="50"><input type="checkbox" class="form-check-input" id="check-all-recap" onchange="toggleAllRecap(this)"></th>
                                     <th>Waktu Submit</th>
                                     <th class="text-start">Nama Siswa</th>
-                                    <th>Kelas</th>
-                                    <th>Mapel</th>
-                                    <th>Nilai Akhir</th>
+                                    <th>Sekolah</th>
+                                    <th>Mapel / Ujian</th>
+                                    <th>Nilai</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>`;
-    if(!recapAllData || recapAllData.length === 0) {
-        h += `<tr><td colspan="6" class="text-muted py-4">Belum ada data nilai masuk.</td></tr>`;
+                            <tbody id="recap-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+             </div>`;
+    
+    $('#content-area').html(h);
+    window.currentFilteredData = recapAllData;
+    renderRecapRows(recapAllData);
+}
+
+// Fungsi Merender Baris Tabel secara Dinamis
+function renderRecapRows(data) {
+    let h = '';
+    if(!data || data.length === 0) {
+        h = `<tr><td colspan="7" class="text-muted py-4">Data tidak ditemukan atau belum ada data masuk.</td></tr>`;
     } else {
-        window.currentFilteredData = recapAllData;
-        recapAllData.forEach(r => {
+        data.forEach(r => {
             recapDataStore[r.ResultID] = { detail: r.Detail, nama: r.NamaSiswa, ujian: r.JudulUjian, nilai: r.TotalNilai, pembuat: r.PembuatNama };
+            
+            // Cek apakah ini survei
+            let isSurvey = false;
+            try { 
+                let dArr = JSON.parse(r.Detail); 
+                if (dArr.length > 0 && dArr[0].responses) isSurvey = true; 
+            } catch(e) {}
+            
+            let displayNilai = isSurvey ? `<span class="badge bg-info text-dark rounded-pill px-3 fs-6">Survei</span>` : `<span class="badge bg-success rounded-pill px-3 fs-6">${r.TotalNilai}</span>`;
+
             h += `<tr>
+                    <td><input type="checkbox" class="form-check-input check-recap" value="${r.ResultID}" onchange="toggleBulkDeleteBtn()"></td>
                     <td class="small text-muted">${r.WaktuSubmit}</td>
                     <td class="text-start fw-bold">${r.NamaSiswa}</td>
-                    <td>${r.KelasSiswa}</td>
-                    <td>${r.Mapel}</td>
-                    <td><span class="badge bg-success rounded-pill px-3 fs-6">${r.TotalNilai}</span></td>
+                    <td>${r.SekolahSiswa || '-'}</td>
+                    <td>${r.Mapel} - ${r.JudulUjian}</td>
+                    <td>${displayNilai}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="printRecap('${r.ResultID}')" title="Cetak Rincian"><i class="fas fa-print"></i></button>
                         <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delResult('${r.ResultID}')" title="Hapus Hasil"><i class="fas fa-trash"></i></button>
@@ -626,8 +733,58 @@ function renderRecapTable() {
                   </tr>`;
         });
     }
-    h += `</tbody></table></div></div></div>`;
-    $('#content-area').html(h);
+    $('#recap-tbody').html(h);
+    $('#check-all-recap').prop('checked', false);
+    toggleBulkDeleteBtn();
+}
+
+// Logika Pencarian & Filter
+function applyFilterRecap() {
+    let nama = $('#filter-nama').val().toLowerCase();
+    let sekolah = $('#filter-sekolah').val();
+    let ujian = $('#filter-ujian').val();
+    
+    window.currentFilteredData = recapAllData.filter(r => {
+        let matchNama = r.NamaSiswa.toLowerCase().includes(nama);
+        let matchSekolah = sekolah === "" || r.SekolahSiswa === sekolah;
+        let matchUjian = ujian === "" || r.JudulUjian === ujian;
+        return matchNama && matchSekolah && matchUjian;
+    });
+    renderRecapRows(window.currentFilteredData);
+}
+
+// Logika Checkbox & Hapus Massal
+function toggleAllRecap(el) {
+    $('.check-recap').prop('checked', el.checked);
+    toggleBulkDeleteBtn();
+}
+
+function toggleBulkDeleteBtn() {
+    if($('.check-recap:checked').length > 0) $('#btn-bulk-delete').removeClass('hidden');
+    else $('#btn-bulk-delete').addClass('hidden');
+}
+
+async function bulkDeleteResults() {
+    const checked = $('.check-recap:checked');
+    if(checked.length === 0) return;
+    
+    const result = await Swal.fire({ title: `Hapus ${checked.length} Data?`, text: 'Data terpilih akan dihapus permanen.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+    if(!result.isConfirmed) return;
+
+    showLoad(true);
+    let successCount = 0;
+    
+    // Looping dengan Promise agar tidak membebani server/database
+    for(let i = 0; i < checked.length; i++) {
+        const rid = $(checked[i]).val();
+        await new Promise(resolve => {
+            google.script.run.withSuccessHandler(() => { successCount++; resolve(); }).withFailureHandler(() => resolve()).adminDeleteResult(rid);
+        });
+    }
+    
+    showLoad(false);
+    Swal.fire('Berhasil', `${successCount} data telah dihapus.`, 'success');
+    loadPage('hasil-rekap');
 }
 
 // Fungsi untuk menghapus nilai individu jika siswa ingin diremet/diulang
@@ -684,31 +841,71 @@ function printFilteredRecap() {
 function printRecap(rid) {
   const d = recapDataStore[rid]; if(!d) return;
   let namaPengawas = d.pembuat || user.Nama;
-  let detailArr = []; try { detailArr = JSON.parse(d.detail); } catch(e) {}
+  let detailArr = []; 
+  try { detailArr = JSON.parse(d.detail); } catch(e) {}
   
-  let detailHtml = '<table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;" border="1"><thead style="background:#f1f5f9;"><tr><th style="padding:8px; width:5%;">No</th><th style="padding:8px; width:15%;">Tipe</th><th style="padding:8px; width:65%;">Jawaban Siswa</th><th style="padding:8px; width:15%;">Skor Didapat</th></tr></thead><tbody>';
-  detailArr.forEach(item => {
-    let n = item.i !== undefined ? item.i : item[0]; let s = item.s !== undefined ? item.s : item[1]; let t = item.t || 'Objektif'; let a = item.a !== undefined ? item.a : '';
-    let displayAns = Array.isArray(a) ? a.join(', ') : a; displayAns = displayAns ? String(displayAns).replace(/\n/g, '<br>') : 'Tidak dijawab';
-    detailHtml += `<tr><td style="padding:8px; text-align:center;">${n}</td><td style="padding:8px; text-align:center;">${t}</td><td style="padding:8px;">${displayAns}</td><td style="padding:8px; text-align:center;">${s}</td></tr>`;
-  });
-  detailHtml += '</tbody></table>';
-  
+  // Deteksi Format Survei
+  let isSurvey = false;
+  if (detailArr.length > 0 && detailArr[0].responses !== undefined) {
+      isSurvey = true;
+  }
+
+  let detailHtml = '';
+  let nilaiBox = '';
+
+  if (isSurvey) {
+      // TAMPILAN JIKA DATA ADALAH SURVEI LINGKUNGAN / KARAKTER
+      nilaiBox = `<div style="text-align:center; border:2px solid #0284c7; padding:15px; border-radius:8px; min-width:150px; background:#f0f9ff;">
+                      <div style="font-size:14px; color:#0369a1; font-weight:bold;">STATUS PENGISIAN</div>
+                      <div style="font-size:20px; font-weight:bold; color:#0284c7;">SURVEI SELESAI</div>
+                  </div>`;
+      
+      detailHtml = '<table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;" border="1"><thead style="background:#f1f5f9;"><tr><th style="padding:8px; width:5%; text-align:center;">No</th><th style="padding:8px; width:65%;">Pernyataan / Aspek yang Dinilai</th><th style="padding:8px; width:30%; text-align:center;">Tanggapan Siswa</th></tr></thead><tbody>';
+      
+      let qCounter = 1;
+      detailArr.forEach((qGroup) => {
+          qGroup.responses.forEach(resp => {
+              detailHtml += `<tr><td style="padding:8px; text-align:center;">${qCounter++}</td><td style="padding:8px;">${resp.statement}</td><td style="padding:8px; text-align:center; font-weight:bold; color:#0369a1;">${resp.answer}</td></tr>`;
+          });
+      });
+      detailHtml += '</tbody></table>';
+
+  } else {
+      // TAMPILAN JIKA DATA ADALAH UJIAN TKA (BERNILAI)
+      nilaiBox = `<div style="text-align:center; border:2px solid #0f5132; padding:15px; border-radius:8px; min-width:150px; background:#f0fdf4;">
+                      <div style="font-size:14px; color:#64748b; font-weight:bold;">NILAI AKHIR (Skala 100)</div>
+                      <div style="font-size:36px; font-weight:bold; color:#0f5132;">${d.nilai}</div>
+                  </div>`;
+      
+      detailHtml = '<table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;" border="1"><thead style="background:#f1f5f9;"><tr><th style="padding:8px; width:5%;">No</th><th style="padding:8px; width:15%;">Tipe</th><th style="padding:8px; width:65%;">Jawaban Siswa</th><th style="padding:8px; width:15%;">Skor Didapat</th></tr></thead><tbody>';
+      
+      detailArr.forEach(item => {
+          let n = item.i !== undefined ? item.i : item[0]; 
+          let s = item.s !== undefined ? item.s : item[1]; 
+          let t = item.t || 'Objektif'; 
+          let a = item.a !== undefined ? item.a : '';
+          let displayAns = Array.isArray(a) ? a.join(', ') : a; 
+          displayAns = displayAns ? String(displayAns).replace(/\n/g, '<br>') : 'Tidak dijawab';
+          detailHtml += `<tr><td style="padding:8px; text-align:center;">${n}</td><td style="padding:8px; text-align:center;">${t}</td><td style="padding:8px;">${displayAns}</td><td style="padding:8px; text-align:center;">${s}</td></tr>`;
+      });
+      detailHtml += '</tbody></table>';
+  }
+
+  let typeLabel = isSurvey ? 'Kuesioner Survei' : 'Ujian/Mapel';
+  let titleDetail = isSurvey ? 'Rincian Tanggapan Survei Karakter & Lingkungan' : 'Rincian Jawaban & Skor TKA';
+
   let content = `
   <div style="display:flex; justify-content:space-between; margin-bottom:20px; border-bottom:2px solid #e2e8f0; padding-bottom:20px;">
       <div>
           <table style="font-size:15px;">
               <tr><td width="130"><strong>Nama Peserta</strong></td><td width="10">:</td><td>${d.nama}</td></tr>
-              <tr><td><strong>Ujian/Mapel</strong></td><td>:</td><td>${d.ujian}</td></tr>
+              <tr><td><strong>${typeLabel}</strong></td><td>:</td><td>${d.ujian}</td></tr>
               <tr><td><strong>Waktu Cetak</strong></td><td>:</td><td>${new Date().toLocaleString('id-ID')}</td></tr>
           </table>
       </div>
-      <div style="text-align:center; border:2px solid #0f5132; padding:15px; border-radius:8px; min-width:150px; background:#f0fdf4;">
-          <div style="font-size:14px; color:#64748b; font-weight:bold;">NILAI AKHIR (Skala 100)</div>
-          <div style="font-size:36px; font-weight:bold; color:#0f5132;">${d.nilai}</div>
-      </div>
+      ${nilaiBox}
   </div>
-  <h4 style="color:#1e293b; margin-bottom:10px;">Rincian Jawaban & Skor</h4>
+  <h4 style="color:#1e293b; margin-bottom:10px;">${titleDetail}</h4>
   ${detailHtml}
   <div style="text-align:right; margin-top:50px;">
       <p>Surabaya, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
@@ -716,9 +913,10 @@ function printRecap(rid) {
       <p><strong>${namaPengawas}</strong></p>
   </div>
   `;
-  downloadHTMLToPDF(`Hasil_Ujian_${d.nama.replace(/\s+/g, '_')}`, content);
+  
+  let fileName = isSurvey ? `Hasil_Survei_${d.nama.replace(/\s+/g, '_')}` : `Hasil_Ujian_${d.nama.replace(/\s+/g, '_')}`;
+  downloadHTMLToPDF(fileName, content);
 }
-
 
 function renderAdministrasi() {
     const uniqueKelas = [...new Set(gAdminData.users.map(u => String(u.Kelas).trim()))].filter(k => k).sort();
