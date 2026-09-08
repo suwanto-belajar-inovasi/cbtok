@@ -60,8 +60,9 @@ export async function POST(req) {
 
       } else if (role === 'siswa') {
         output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
+        // PERBAIKAN: Menghapus r.Pelanggaran untuk menghindari error database
         const history = await turso.execute({ 
-          sql: "SELECT r.ResultID, r.ExamID, r.WaktuSubmit, r.TotalNilai as Nilai, e.Judul, e.AllowDownloadR, e.AllowDownloadQ, e.ShowStats, r.Pelanggaran FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.SiswaID = ? AND e.Mapel != 'SURVEY'", 
+          sql: "SELECT r.ResultID, r.ExamID, r.WaktuSubmit, r.TotalNilai as Nilai, e.Judul, e.AllowDownloadR, e.AllowDownloadQ, e.ShowStats FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.SiswaID = ? AND e.Mapel != 'SURVEY'", 
           args: [userId] 
         });
         output.history = history.rows;
@@ -160,7 +161,6 @@ export async function POST(req) {
       const d = args[0]; const id = d.id || ('SRV' + Date.now());
       const cek = await turso.execute({ sql: "SELECT ExamID FROM Exams WHERE ExamID = ?", args: [id] });
       if (cek.rows.length > 0) {
-          // Token digunakan untuk menyimpan ExamID TKA yang terhubung
           await turso.execute({ sql: "UPDATE Exams SET Judul=?, TargetKelas=?, ShowStats=?, Token=? WHERE ExamID=?", args: [d.judul, d.desc, d.status, d.linkedExam, id] });
       } else {
           await turso.execute({ sql: "INSERT INTO Exams (ExamID, Judul, Mapel, TargetKelas, Durasi, Token, StartDate, EndDate, LimitTries, ShowStats, RandomQ, AllowDownloadQ, AllowDownloadR, PembuatID) VALUES (?, ?, 'SURVEY', ?, 0, ?, '', '', 1, ?, 'No', 'No', 'No', ?)", args: [id, d.judul, d.desc, d.linkedExam, d.status, d.userId] });
@@ -170,7 +170,6 @@ export async function POST(req) {
 
     if (action === 'checkActiveSurvey') {
         const finishedExamId = args[0]; 
-        // Mencari survey yang terhubung langsung dengan ID ujian TKA yang baru saja diselesaikan
         const srv = await turso.execute({
             sql: "SELECT * FROM Exams WHERE Mapel='SURVEY' AND Token=? AND ShowStats='Aktif' LIMIT 1",
             args: [finishedExamId]
@@ -260,6 +259,7 @@ export async function POST(req) {
        let finalScore100 = maxPossibleTotalScore > 0 ? (rawTotalScore / maxPossibleTotalScore) * 100 : 0;
        finalScore100 = Math.round(finalScore100 * 100) / 100;
 
+       // Insert dengan default keterangan pada kolom Pelanggaran
        await turso.execute({ 
            sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, ?, ?, ?)", 
            args: ['RES' + Date.now(), uid, eid, finalScore100, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] 
@@ -269,8 +269,9 @@ export async function POST(req) {
 
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
+      // PERBAIKAN: Menghilangkan r.Pelanggaran agar tidak error
       let query = `
-        SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
+        SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
                e.Judul AS JudulUjian, e.Mapel AS Mapel, e.PembuatID AS PembuatID,
                (SELECT Nama FROM Users WHERE ID = e.PembuatID) AS PembuatNama
