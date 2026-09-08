@@ -84,27 +84,73 @@ export default function Page() {
               </div>
 
               <div className="bg-white text-dark p-4 rounded-4 shadow-sm" style={{ opacity: 0.95 }}>
-                <h5 className="fw-bold text-success mb-3"><i className="fas fa-calendar-alt me-2"></i>Jadwal Pelaksanaan</h5>
-                <div className="row g-2 small">
-                  <div className="col-sm-6 border-bottom pb-2">
-                    <div className="fw-bold">Tryout 1 (Februari 2026)</div>
-                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
-                  </div>
-                  <div className="col-sm-6 border-bottom pb-2">
-                    <div className="fw-bold">Tryout 2 (Maret 2026)</div>
-                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
-                  </div>
-                  <div className="col-sm-6 border-bottom pb-2 border-bottom-md-0">
-                    <div className="fw-bold">Tryout 3 (April 2026)</div>
-                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="fw-bold">Tryout 4 (Mei 2026)</div>
-                    <ul className="mb-0 ps-3"><li>Gelombang 1: 08.00 - 10.00 WIB</li><li>Gelombang 2: 10.30 - 12.30 WIB</li></ul>
-                  </div>
-                </div>
-              </div>
-            </div>
+  <h5 className="fw-bold text-success mb-3">
+    <i className="fas fa-calendar-alt me-2"></i>
+    Jadwal Pelaksanaan
+  </h5>
+
+  <div className="row g-3 small">
+
+    {/* TRYOUT 1 */}
+    <div className="col-lg-6">
+      <div className="border rounded-3 p-3 h-100">
+        <div className="fw-bold text-primary mb-2">
+          Tryout 1 (14–17 Desember 2026)
+        </div>
+
+        <div className="mb-2">
+          <strong>Gelombang 1</strong><br />
+          <small>14–15 Desember 2026</small>
+          <ul className="mb-2 ps-3">
+            <li>Sesi 1 : 07.30 – 09.00 WIB</li>
+            <li>Sesi 2 : 09.30 – 11.00 WIB</li>
+            <li>Sesi 3 : 11.30 – 13.00 WIB</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Gelombang 2</strong><br />
+          <small>16–17 Desember 2026</small>
+          <ul className="mb-0 ps-3">
+            <li>Sesi 1 : 07.30 – 09.00 WIB</li>
+            <li>Sesi 2 : 09.30 – 11.00 WIB</li>
+            <li>Sesi 3 : 11.30 – 13.00 WIB</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    {/* TRYOUT 2 */}
+    <div className="col-lg-6">
+      <div className="border rounded-3 p-3 h-100">
+        <div className="fw-bold text-primary mb-2">
+          Tryout 2 (25–28 Januari 2027)
+        </div>
+
+        <div className="mb-2">
+          <strong>Gelombang 1</strong><br />
+          <small>25–26 Januari 2027</small>
+          <ul className="mb-2 ps-3">
+            <li>Sesi 1 : 07.30 – 09.00 WIB</li>
+            <li>Sesi 2 : 09.30 – 11.00 WIB</li>
+            <li>Sesi 3 : 11.30 – 13.00 WIB</li>
+          </ul>
+        </div>
+
+        <div>
+          <strong>Gelombang 2</strong><br />
+          <small>27–28 Januari 2027</small>
+          <ul className="mb-0 ps-3">
+            <li>Sesi 1 : 07.30 – 09.00 WIB</li>
+            <li>Sesi 2 : 09.30 – 11.00 WIB</li>
+            <li>Sesi 3 : 11.30 – 13.00 WIB</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
             <div className="col-lg-5">
               <div style={{
