@@ -73,16 +73,6 @@ export default function Page() {
                 Selamat datang di Aplikasi Computer Based Test (CBT) resmi Kelompok Kerja Guru Madrasah Ibtidaiyah (KKGMI) Kota Surabaya 10.
               </p>
               
-              <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.95 }}>
-                <h5 className="fw-bold text-success mb-3"><i className="fas fa-list-check me-2"></i>Aturan & Cara Mengerjakan</h5>
-                <ul className="mb-0 small" style={{ paddingLeft: '1.2rem', lineHeight: '1.6' }}>
-                  <li>Pastikan koneksi internet Anda stabil sebelum mulai ujian.</li>
-                  <li>Sistem akan otomatis beralih ke mode <b>Layar Penuh (Fullscreen)</b>.</li>
-                  <li><b>DILARANG</b> membuka tab baru, aplikasi lain, atau membagi layar (Split Screen). Pelanggaran maksimal 3 kali akan membuat jawaban otomatis terkirim.</li>
-                  <li>Tombol <b>Selesai Ujian</b> hanya akan muncul di soal nomor terakhir. Gunakan tombol <b>Ragu-ragu</b> jika ingin menandai soal yang belum yakin.</li>
-                </ul>
-              </div>
-
               {/* --- KOTAK ATURAN --- */}
               <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.95 }}>
                 <h5 className="fw-bold text-success mb-3"><i className="fas fa-list-check me-2"></i>Aturan & Cara Mengerjakan</h5>
