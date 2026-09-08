@@ -542,28 +542,178 @@ function fetchLiveMonitor(isSilent = false) {
         }
     }).getLiveMonitoring(user.ID, user.Role, user.Sekolah);
 }
+// Fungsi untuk memuat kerangka Data Peserta beserta Filter Pencarian
 function renderUsers(users) {
+    window.allUsersData = users; // Simpan data global untuk filter
     const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
+    
+    // Ambil daftar sekolah unik untuk dropdown filter
+    let uniqueSekolah = [...new Set(users.map(u => u.Sekolah || ''))].filter(Boolean);
+
     let h = `<div class="d-flex justify-content-between mb-3 flex-wrap gap-2 align-items-center">
         <div>
-            ${isAdmin ? `<button class="btn btn-success shadow-sm me-2 rounded-pill px-4" onclick="$('#modalUser').modal('show');$('#modalUser form')[0].reset();$('#mu-id').val('');$('#mu-foto-b64').val('');"><i class="fas fa-plus me-1"></i> Tambah User</button>
-            <label class="btn btn-primary shadow-sm m-0 rounded-pill px-4"><i class="fas fa-upload me-1"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadUsersExcel(event)"></label>` 
-            : `<h5 class="fw-bold text-primary mb-0"><i class="fas fa-users me-2"></i>Data Siswa Anda</h5>`}
+            ${isAdmin ? `
+            <button class="btn btn-success shadow-sm me-2 rounded-pill px-3 mb-2" onclick="$('#modalUser').modal('show');$('#modalUser form')[0].reset();$('#mu-id').val('');$('#mu-foto-b64').val('');"><i class="fas fa-plus me-1"></i> Tambah User</button>
+            <label class="btn btn-primary shadow-sm m-0 me-2 rounded-pill px-3 mb-2"><i class="fas fa-upload me-1"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadUsersExcel(event)"></label>
+            <button class="btn btn-outline-success shadow-sm m-0 me-2 rounded-pill px-3 mb-2" onclick="downloadUserTemplate()"><i class="fas fa-download me-1"></i> Template Excel</button>
+            <button class="btn btn-danger shadow-sm m-0 rounded-pill px-3 mb-2 fw-bold hidden" id="btn-bulk-delete-users" onclick="bulkDeleteUsers()"><i class="fas fa-trash me-1"></i> Hapus Terpilih</button>
+            ` : `<h5 class="fw-bold text-primary mb-0"><i class="fas fa-users me-2"></i>Data Siswa Anda</h5>`}
         </div>
-        <input type="text" id="user-search" class="form-control rounded-pill px-3 shadow-sm border-0" style="width:250px; background:#f8fafc;" placeholder="Cari Siswa..." onkeyup="filterTable('tbl-users', this.value)">
     </div>
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden"><div class="card-body p-0"><div class="table-responsive">
-    <table class="table table-hover align-middle mb-0" id="tbl-users"><thead class="table-light">
-    <tr><th>Foto & Nama</th><th>Tgl Lahir</th><th>Username</th><th>Role</th><th>Kelas</th>${isAdmin ? '<th>Aksi</th>' : ''}</tr></thead><tbody>`;
-    users.forEach(u => {
-        const safeData = encodeURIComponent(JSON.stringify(u));
-        h += `<tr><td><div class="d-flex align-items-center"><img src="${u.Foto || 'https://via.placeholder.com/40'}" class="rounded-circle me-3 shadow-sm" width="40" height="40" style="object-fit:cover;">
-                <span class="fw-bold text-dark">${u.Nama}</span></div></td><td>${u.TglLahir || '-'}</td><td>${u.Username}</td>
-        <td><span class="badge bg-${String(u.Role).trim().toLowerCase()==='admin'?'danger':(String(u.Role).trim().toLowerCase()==='guru'?'warning text-dark':'primary')}">${u.Role}</span></td>
-        <td>${u.Kelas || '-'}</td>
-        ${isAdmin ? `<td><button class="btn btn-sm btn-outline-dark me-1 rounded-circle" onclick="editUser('${safeData}')"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delUser('${u.ID}')"><i class="fas fa-trash"></i></button></td>` : ''}</tr>`;
+    
+    <!-- Area Filter -->
+    <div class="row g-2 mb-3 p-3 bg-white rounded-4 shadow-sm border">
+        <div class="col-md-6">
+            <label class="small fw-bold text-muted ms-1">Cari Nama / Username Siswa</label>
+            <input type="text" id="filter-user-nama" class="form-control bg-light border-0 rounded-pill px-3" placeholder="Ketik nama atau username..." onkeyup="applyFilterUsers()">
+        </div>
+        <div class="col-md-6">
+            <label class="small fw-bold text-muted ms-1">Filter Sekolah</label>
+            <select id="filter-user-sekolah" class="form-select bg-light border-0 rounded-pill px-3" onchange="applyFilterUsers()">
+                <option value="">Semua Sekolah</option>
+                ${uniqueSekolah.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabel Peserta -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tbl-users">
+                    <thead class="table-light">
+                        <tr>
+                            ${isAdmin ? `<th width="50"><input type="checkbox" class="form-check-input" id="check-all-users" onchange="toggleAllUsers(this)"></th>` : ''}
+                            <th>Foto & Nama</th>
+                            <th>Tgl Lahir</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Kelas</th>
+                            <th>Sekolah</th>
+                            ${isAdmin ? '<th>Aksi</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>`;
+    
+    $('#content-area').html(h);
+    renderUserRows(users);
+}
+
+// Fungsi untuk merender isi (baris) tabel pengguna berdasarkan filter
+function renderUserRows(data) {
+    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
+    let h = '';
+    
+    if(!data || data.length === 0) {
+        h = `<tr><td colspan="${isAdmin ? 8 : 7}" class="text-center text-muted py-4">Data peserta tidak ditemukan.</td></tr>`;
+    } else {
+        data.forEach(u => {
+            const safeData = encodeURIComponent(JSON.stringify(u));
+            h += `<tr>
+                ${isAdmin ? `<td><input type="checkbox" class="form-check-input check-user" value="${u.ID}" onchange="toggleBulkDeleteUsersBtn()"></td>` : ''}
+                <td>
+                    <div class="d-flex align-items-center">
+                        <img src="${u.Foto || 'https://via.placeholder.com/40'}" class="rounded-circle me-3 shadow-sm" width="40" height="40" style="object-fit:cover;">
+                        <span class="fw-bold text-dark">${u.Nama}</span>
+                    </div>
+                </td>
+                <td>${u.TglLahir || '-'}</td>
+                <td>${u.Username}</td>
+                <td><span class="badge bg-${String(u.Role).trim().toLowerCase()==='admin'?'danger':(String(u.Role).trim().toLowerCase()==='guru'?'warning text-dark':'primary')}">${u.Role}</span></td>
+                <td>${u.Kelas || '-'}</td>
+                <td>${u.Sekolah || '-'}</td>
+                ${isAdmin ? `<td>
+                    <button class="btn btn-sm btn-outline-dark me-1 rounded-circle" onclick="editUser('${safeData}')" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delUser('${u.ID}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                </td>` : ''}
+            </tr>`;
+        });
+    }
+    
+    $('#users-tbody').html(h);
+    $('#check-all-users').prop('checked', false);
+    if(isAdmin) toggleBulkDeleteUsersBtn();
+}
+
+// Logika Filter (Nama/Username dan Sekolah)
+function applyFilterUsers() {
+    let kataKunci = $('#filter-user-nama').val().toLowerCase();
+    let sekolah = $('#filter-user-sekolah').val();
+    
+    let filtered = window.allUsersData.filter(u => {
+        let matchNama = (u.Nama || "").toLowerCase().includes(kataKunci) || (u.Username || "").toLowerCase().includes(kataKunci);
+        let matchSekolah = sekolah === "" || u.Sekolah === sekolah;
+        return matchNama && matchSekolah;
     });
-    h += `</tbody></table></div></div></div>`; $('#content-area').html(h);
+    
+    renderUserRows(filtered);
+}
+
+// Logika Checkbox "Check All" Peserta
+function toggleAllUsers(el) {
+    $('.check-user').prop('checked', el.checked);
+    toggleBulkDeleteUsersBtn();
+}
+
+// Logika memunculkan tombol hapus massal
+function toggleBulkDeleteUsersBtn() {
+    if($('.check-user:checked').length > 0) $('#btn-bulk-delete-users').removeClass('hidden');
+    else $('#btn-bulk-delete-users').addClass('hidden');
+}
+
+// Logika Eksekusi Hapus Massal Peserta
+async function bulkDeleteUsers() {
+    const checked = $('.check-user:checked');
+    if(checked.length === 0) return;
+    
+    const result = await Swal.fire({ 
+        title: `Hapus ${checked.length} Peserta?`, 
+        text: 'Akun peserta yang terpilih akan dihapus secara permanen!', 
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#d33' 
+    });
+    
+    if(!result.isConfirmed) return;
+
+    showLoad(true);
+    let successCount = 0;
+    
+    // Looping dengan Promise untuk menghapus tiap data tanpa bertabrakan di server
+    for(let i = 0; i < checked.length; i++) {
+        const uid = $(checked[i]).val();
+        await new Promise(resolve => {
+            google.script.run
+                .withSuccessHandler(() => { successCount++; resolve(); })
+                .withFailureHandler(() => resolve())
+                .adminManageUser('delete', { id: uid });
+        });
+    }
+    
+    showLoad(false);
+    Swal.fire('Berhasil', `${successCount} akun peserta telah dihapus.`, 'success');
+    loadPage('admin-users');
+}
+
+// Logika Generate Template Excel Data Peserta
+function downloadUserTemplate() {
+    const wsData = [{
+        "Nama": "Siswa Contoh",
+        "Username": "siswa01",
+        "Password": "password123",
+        "Role": "siswa",
+        "Sekolah": "SD/MI Contoh",
+        "Kelas": "6",
+        "TglLahir": "2010-05-14"
+    }];
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Data_Peserta");
+    XLSX.writeFile(wb, "Template_Upload_Peserta.xlsx");
 }
 
 // -----------------------------------------------------
@@ -1344,6 +1494,7 @@ function loadQList() {
         let topActions = '';
         if(!isSurveyMode) {
             topActions = `<div class="d-flex justify-content-end mb-3 gap-2 flex-wrap bg-white p-3 rounded-4 shadow-sm border">
+                <button class="btn btn-outline-info shadow-sm rounded-pill px-4 fw-bold" onclick="downloadQuestionTemplate()"><i class="fas fa-file-excel me-2"></i> Template Excel</button>
                 <label class="btn btn-outline-success shadow-sm m-0 rounded-pill px-4 fw-bold"><i class="fas fa-upload me-2"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadQuestionsExcel(event)"></label>
                 <button class="btn btn-info text-white shadow-sm rounded-pill px-4 fw-bold" onclick="previewAllQ()"><i class="fas fa-desktop me-2"></i> Preview Soal</button>
                 <button class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold" onclick="downloadAllQ()"><i class="fas fa-file-pdf me-2"></i> Download HTML/PDF</button>
@@ -1491,7 +1642,64 @@ return `
         </div>
     </div>`;
 }
+// Logika Generate Template Excel Bank Soal
+function downloadQuestionTemplate() {
+    const wsData = [
+        {
+            "Nomor": 1,
+            "Tipe": "PGS",
+            "Pertanyaan": "Siapakah penemu bola lampu?",
+            "Opsi (Pisahkan dgn |)": "Thomas Edison|Albert Einstein|Isaac Newton|Galileo Galilei",
+            "Kunci (Pisahkan dgn |)": "Thomas Edison",
+            "Skor": 10
+        },
+        {
+            "Nomor": 2,
+            "Tipe": "PGK",
+            "Pertanyaan": "Manakah yang merupakan hewan karnivora?",
+            "Opsi (Pisahkan dgn |)": "Singa|Sapi|Harimau|Kambing",
+            "Kunci (Pisahkan dgn |)": "Singa|Harimau",
+            "Skor": 20
+        },
+        {
+            "Nomor": 3,
+            "Tipe": "Uraian",
+            "Pertanyaan": "Sebutkan 3 warna primer!",
+            "Opsi (Pisahkan dgn |)": "",
+            "Kunci (Pisahkan dgn |)": "merah,kuning,biru",
+            "Skor": 15
+        }
+    ];
+    
+    // Fitur auto-width kolom
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wscols = [ {wch:10}, {wch:15}, {wch:40}, {wch:50}, {wch:30}, {wch:10} ];
+    ws['!cols'] = wscols;
 
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Soal");
+    XLSX.writeFile(wb, "Template_Upload_Soal_CBT.xlsx");
+}
+
+// Tambahan: Pastikan ada fungsi delUser (penghapusan individual) untuk melengkapi tombol di dalam tabel peserta
+function delUser(uid) {
+    Swal.fire({
+        title: 'Hapus Peserta?',
+        text: 'Data peserta ini akan dihapus permanen.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33'
+    }).then(r => {
+        if(r.isConfirmed) {
+            showLoad(true);
+            google.script.run.withSuccessHandler(res => {
+                showLoad(false);
+                if(res.status === 'success') { toast('success', res.msg); loadPage('admin-users'); }
+                else Swal.fire('Error', res.msg, 'error');
+            }).adminManageUser('delete', {id: uid});
+        }
+    });
+}
 function toggleEditQ(uid) { 
     const form = $(`#form-${uid}`); 
     if (form.hasClass('hidden')) { 
