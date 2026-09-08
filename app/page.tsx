@@ -83,30 +83,58 @@ export default function Page() {
                 </ul>
               </div>
 
+              {/* --- KOTAK ATURAN --- */}
+              <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.95 }}>
+                <h5 className="fw-bold text-success mb-3"><i className="fas fa-list-check me-2"></i>Aturan & Cara Mengerjakan</h5>
+                <ol className="mb-0 small text-muted" style={{ paddingLeft: '1.2rem', lineHeight: '1.7' }}>
+                  <li className="mb-1">Pastikan koneksi internet Anda stabil sebelum mulai ujian.</li>
+                  <li className="mb-1">Sistem akan otomatis beralih ke mode <strong className="text-dark">Layar Penuh (Fullscreen)</strong>.</li>
+                  <li className="mb-1"><strong className="text-danger">DILARANG</strong> membuka tab baru, aplikasi lain, atau membagi layar (Split Screen). Pelanggaran maksimal 3 kali akan membuat jawaban otomatis terkirim.</li>
+                  <li>Tombol <strong className="text-dark">Selesai Ujian</strong> hanya akan muncul di soal nomor terakhir. Gunakan tombol <strong className="text-warning text-darken">Ragu-ragu</strong> jika ingin menandai soal yang belum yakin.</li>
+                </ol>
+              </div>
+
+              {/* --- KOTAK JADWAL --- */}
               <div className="bg-white text-dark p-4 rounded-4 shadow-sm" style={{ opacity: 0.95 }}>
                 <h5 className="fw-bold text-success mb-3"><i className="fas fa-calendar-alt me-2"></i>Jadwal Pelaksanaan</h5>
-                <div className="row g-2 small">
-                  <div className="col-sm-6 border-bottom pb-3">
-                    <div className="fw-bold text-primary mb-1">Tryout 1 (14 - 17 Des 2026)</div>
-                    <ul className="mb-0 ps-3">
-                      <li>Gelombang 1: 14 - 15 Desember</li>
-                      <li>Gelombang 2: 16 - 17 Desember</li>
-                    </ul>
-                  </div>
-                  <div className="col-sm-6 border-bottom pb-3">
-                    <div className="fw-bold text-primary mb-1">Tryout 2 (25 - 28 Jan 2027)</div>
-                    <ul className="mb-0 ps-3">
-                      <li>Gelombang 1: 25 - 26 Januari</li>
-                      <li>Gelombang 2: 27 - 28 Januari</li>
-                    </ul>
-                  </div>
-                  <div className="col-12 pt-2">
-                    <div className="fw-bold text-danger mb-2"><i className="fas fa-clock me-1"></i> Waktu Sesi (Berlaku Setiap Gelombang):</div>
-                    <div className="d-flex flex-wrap gap-4 mt-1 bg-light p-2 rounded border">
-                      <div><b>Sesi 1:</b> 07.30 - 09.00</div>
-                      <div><b>Sesi 2:</b> 09.30 - 11.00</div>
-                      <div><b>Sesi 3:</b> 11.30 - 13.00</div>
+                
+                <div className="row g-3 mb-3">
+                  {/* Blok Tryout 1 */}
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light rounded-3 border h-100 shadow-sm">
+                      <h6 className="fw-bold text-primary mb-2 border-bottom pb-2">
+                        Tryout 1 <br/>
+                        <small className="text-muted fw-normal" style={{fontSize: '12px'}}>14 - 17 Des 2026</small>
+                      </h6>
+                      <div className="small text-muted" style={{ lineHeight: '1.6' }}>
+                        <div className="mb-2"><strong className="text-dark"><i className="fas fa-angle-right text-success me-1"></i>Gelombang 1:</strong><br/>14 - 15 Desember 2026</div>
+                        <div><strong className="text-dark"><i className="fas fa-angle-right text-success me-1"></i>Gelombang 2:</strong><br/>16 - 17 Desember 2026</div>
+                      </div>
                     </div>
+                  </div>
+                  
+                  {/* Blok Tryout 2 */}
+                  <div className="col-md-6">
+                    <div className="p-3 bg-light rounded-3 border h-100 shadow-sm">
+                      <h6 className="fw-bold text-primary mb-2 border-bottom pb-2">
+                        Tryout 2 <br/>
+                        <small className="text-muted fw-normal" style={{fontSize: '12px'}}>25 - 28 Jan 2027</small>
+                      </h6>
+                      <div className="small text-muted" style={{ lineHeight: '1.6' }}>
+                        <div className="mb-2"><strong className="text-dark"><i className="fas fa-angle-right text-success me-1"></i>Gelombang 1:</strong><br/>25 - 26 Januari 2027</div>
+                        <div><strong className="text-dark"><i className="fas fa-angle-right text-success me-1"></i>Gelombang 2:</strong><br/>27 - 28 Januari 2027</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blok Sesi */}
+                <div className="p-3 rounded-3 border" style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                  <div className="fw-bold text-success mb-2 small"><i className="fas fa-clock me-1"></i> Waktu Sesi (Berlaku Semua Gelombang):</div>
+                  <div className="d-flex flex-wrap gap-2 small">
+                    <span className="badge bg-white text-success border border-success px-3 py-2 shadow-sm" style={{ fontSize: '13px' }}>Sesi 1: 07.30 - 09.00</span>
+                    <span className="badge bg-white text-success border border-success px-3 py-2 shadow-sm" style={{ fontSize: '13px' }}>Sesi 2: 09.30 - 11.00</span>
+                    <span className="badge bg-white text-success border border-success px-3 py-2 shadow-sm" style={{ fontSize: '13px' }}>Sesi 3: 11.30 - 13.00</span>
                   </div>
                 </div>
               </div>
