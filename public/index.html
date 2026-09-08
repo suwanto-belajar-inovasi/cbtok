@@ -174,17 +174,31 @@
 </div>
 
 <!-- TAMPILAN FORM SURVEI DENGAN UI CERIA -->
-<div id="view-survey" class="hidden" style="min-height: 100vh; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);">
+<div id="view-survey" class="hidden" style="min-height: 100vh; background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); padding-bottom: 50px;">
     <div class="bg-warning text-dark p-5 shadow-sm text-center" style="border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; background: linear-gradient(135deg, #f6d365 0%, #fda085 100%) !important;">
         <i class="fas fa-smile-beam fa-3x mb-3 text-white"></i>
         <h3 class="fw-bold m-0 text-white" id="survey-title" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">Judul Survey</h3>
         <p class="m-0 mt-2 text-white fw-medium" id="survey-desc" style="font-size: 1.1rem;">Deskripsi</p>
     </div>
+    
     <div class="container my-5" style="max-width: 900px;" id="survey-container">
         <!-- Soal Survei Otomatis Di Sini -->
     </div>
-    <div class="container text-center mb-5 pb-5">
-        <button class="btn btn-primary btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg" onclick="submitSurvey()" style="background: #ff758c; border: none;"><i class="fas fa-paper-plane me-2"></i> Kirim Jawaban Survei</button>
+    
+    <!-- Tombol Navigasi Survei -->
+    <div class="container" style="max-width: 900px;">
+        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 shadow-sm border">
+            <button class="btn btn-secondary rounded-pill px-4 fw-bold shadow-sm hidden" id="btn-prev-survey" onclick="navSurvey(-1)">
+                <i class="fas fa-chevron-left me-2"></i> Sebelumnya
+            </button>
+            <div class="flex-grow-1 text-center fw-bold text-muted" id="survey-progress-text"></div>
+            <button class="btn btn-info text-white rounded-pill px-4 fw-bold shadow-sm" id="btn-next-survey" onclick="navSurvey(1)">
+                Selanjutnya <i class="fas fa-chevron-right ms-2"></i>
+            </button>
+            <button class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-lg hidden" id="btn-submit-survey" onclick="submitSurvey()" style="background: #ff758c; border: none;">
+                <i class="fas fa-paper-plane me-2"></i> Kirim Survei
+            </button>
+        </div>
     </div>
 </div>
 
@@ -373,6 +387,8 @@ let totalQ = 0; let currentQuestionsData = []; let currentQIdx = 0;
 let recapAllData = []; let recapDataStore = {};
 let violationCount = 0; const maxViolations = 3; let isExamFinished = false; let violationLock = false;
 let isSurveyMode = false;
+let currentSurveyIdx = 0;
+let totalSurveyQ = 0;
 
 const MathButton = function (context) {
     const ui = $.summernote.ui;
@@ -2057,21 +2073,89 @@ function renderSurveyForm() {
     $('#view-survey').removeClass('hidden');
     $('#survey-title').text(window.activeSurveyData.header.Judul);
     $('#survey-desc').text(window.activeSurveyData.header.TargetKelas);
+    
+    totalSurveyQ = window.activeSurveyData.qs.length;
+    currentSurveyIdx = 0;
+    
     let h = '';
     window.activeSurveyData.qs.forEach((q, qIdx) => {
         let scales = JSON.parse(q.Key || "[]");
         let statements = JSON.parse(q.Options || "[]");
-        h += `<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><div class="mb-4 survey-stimulus" style="font-size:16px;">${q.Pertanyaan}</div><div class="table-responsive"><table class="table table-bordered table-striped align-middle"><thead class="table-light"><tr><th>Pernyataan Detail</th>`;
-        scales.forEach(s => h+= `<th class="text-center" style="width:100px;">${s}</th>`);
-        h += `</tr></thead><tbody>`;
+        
+        // CSS class hidden untuk soal selain soal pertama
+        let slideClass = qIdx === 0 ? '' : 'hidden';
+        
+        h += `<div class="card border-0 shadow-sm rounded-4 mb-4 survey-slide ${slideClass}" id="surv-sl-${qIdx}">
+                <div class="card-body p-4">
+                    <div class="mb-4 survey-stimulus" style="font-size:16px;">
+                        <div class="badge bg-success mb-3 fs-6 rounded-pill px-3 py-2 shadow-sm">Bagian ${qIdx + 1}</div><br>
+                        ${decodeHTML(q.Pertanyaan)}
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Pernyataan Detail</th>`;
+        
+        scales.forEach(s => h += `<th class="text-center" style="width:100px;">${s}</th>`);
+        
+        h += `                  </tr>
+                            </thead>
+                            <tbody>`;
+        
         statements.forEach((stmt, sIdx) => {
             h += `<tr><td class="fw-medium">${stmt}</td>`;
-            scales.forEach(s => { h += `<td class="text-center"><input type="radio" class="form-check-input" style="width:1.5em; height:1.5em; cursor:pointer;" name="sq-${q.QID}-${sIdx}" value="${s}"></td>`; });
+            scales.forEach(s => { 
+                h += `<td class="text-center">
+                        <input type="radio" class="form-check-input" style="width:1.5em; height:1.5em; cursor:pointer;" name="sq-${q.QID}-${sIdx}" value="${s}">
+                      </td>`; 
+            });
             h += `</tr>`;
         });
-        h += `</tbody></table></div></div></div>`;
+        
+        h += `              </tbody>
+                        </table>
+                    </div>
+                </div>
+              </div>`;
     });
+    
     $('#survey-container').html(h);
+    updateSurveyNav(); // Panggil pengatur tombol
+}
+
+// Fungsi Pindah Halaman Survei
+function navSurvey(dir) {
+    let nextIdx = currentSurveyIdx + dir;
+    if (nextIdx >= 0 && nextIdx < totalSurveyQ) {
+        $('.survey-slide').addClass('hidden');
+        $(`#surv-sl-${nextIdx}`).removeClass('hidden');
+        currentSurveyIdx = nextIdx;
+        updateSurveyNav();
+        // Auto scroll ke atas saat pindah soal
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// Fungsi Mengatur Tampilan Tombol Navigasi Survei
+function updateSurveyNav() {
+    $('#survey-progress-text').text(`Halaman ${currentSurveyIdx + 1} dari ${totalSurveyQ}`);
+    
+    // Tampilkan / sembunyikan tombol Sebelumnya
+    if(currentSurveyIdx === 0) {
+        $('#btn-prev-survey').addClass('hidden');
+    } else {
+        $('#btn-prev-survey').removeClass('hidden');
+    }
+    
+    // Tampilkan / sembunyikan tombol Selanjutnya dan Kirim
+    if(currentSurveyIdx === totalSurveyQ - 1) {
+        $('#btn-next-survey').addClass('hidden');
+        $('#btn-submit-survey').removeClass('hidden');
+    } else {
+        $('#btn-next-survey').removeClass('hidden');
+        $('#btn-submit-survey').addClass('hidden');
+    }
 }
 
 function submitSurvey() {
@@ -2190,6 +2274,7 @@ function saveUser() {
         Swal.fire('Koneksi Terputus', 'Gagal menghubungi server.', 'error');
     }).adminManageUser('save', d);
 }
+    
 </script>
 </body>
 </html>
