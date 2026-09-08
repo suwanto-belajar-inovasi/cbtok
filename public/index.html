@@ -21,6 +21,7 @@
         .hidden { display: none !important; }
         .q-content img, .opt-content img, .survey-stimulus img { max-width: 100% !important; height: auto !important; border-radius: 6px; margin: 5px 0; }
         
+        /* Dashboard & Sidebar Styling */
         .wrapper { display: flex; width: 100%; align-items: stretch; position: relative; }
         #sidebar { min-width: 260px; max-width: 260px; background: #064e3b; color: #fff; min-height: 100vh; position: fixed; z-index: 1050; transition: all 0.3s; left: 0; top: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
         #sidebar.active { left: -260px; }
@@ -28,6 +29,7 @@
         #sidebar ul li a { padding: 15px 25px; display: block; color: #e2e8f0; text-decoration: none; border-left: 4px solid transparent; cursor: pointer; transition: 0.2s; }
         #sidebar ul li a:hover, #sidebar ul li a.active { background: rgba(212, 175, 55, 0.1); color: #fff; border-left-color: var(--secondary); }
         
+        /* Exam Layout */
         #view-exam { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; z-index: 9999; background: #f8fafc; overflow: hidden; display: flex; flex-direction: column; }
         .exam-header { flex-shrink: 0; height: 60px; background: #064e3b; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .exam-container-split { flex-grow: 1; display: flex; gap: 20px; padding: 20px; overflow: hidden; }
@@ -167,8 +169,8 @@
         <h3 class="fw-bold text-dark">Ujian TKA Terkirim!</h3>
         <p class="text-muted mb-4 mt-3" style="font-size: 1.1rem;">Mohon tunggu sebentar, Anda diwajibkan untuk mengisi Survei Evaluasi. Layar akan beralih otomatis dalam:</p>
         <h1 class="display-1 fw-bold text-primary mb-4" id="countdown-number">30</h1>
-        <!-- Tombol 'Skip' dimatikan sesuai permintaan agar wajib tunggu 30 detik -->
-        <button class="btn btn-secondary rounded-pill px-5 py-2 fw-bold shadow disabled" id="btn-skip-countdown"><i class="fas fa-lock me-2"></i> Memuat Survei...</button>
+        <!-- Tombol 'Skip' dimatikan agar siswa WAJIB menunggu -->
+        <button class="btn btn-secondary rounded-pill px-5 py-2 fw-bold shadow disabled" id="btn-skip-countdown"><i class="fas fa-lock me-2"></i> Menyiapkan Survei...</button>
     </div>
 </div>
 
@@ -373,6 +375,20 @@ let recapAllData = []; let recapDataStore = {};
 let violationCount = 0; const maxViolations = 3; let isExamFinished = false; let violationLock = false;
 let isSurveyMode = false;
 
+// -----------------------------------------------------
+// FUNGSI PEMBERSIH KODE HTML DARI COPY PASTE WEB
+// -----------------------------------------------------
+function cleanHTMLTags(str) {
+    if (!str) return '';
+    // Menghapus atribut style, role, class, dan dir yang bocor dari hasil copas web/word
+    let s = str.replace(/\s+(style|class|role|dir|data-[a-zA-Z\-]+)="[^"]*"/gi, '');
+    s = s.replace(/role="presentation"/gi, '');
+    s = s.replace(/style="[^"]*"/gi, '');
+    s = s.replace(/class="[^"]*"/gi, '');
+    s = s.replace(/dir="[^"]*"/gi, '');
+    return s;
+}
+
 const MathButton = function (context) {
     const ui = $.summernote.ui;
     const button = ui.button({
@@ -413,15 +429,6 @@ $(document).ready(() => {
     $('#logo-container img').attr('src', user.LogoUrl || 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq');
     initDash(); checkResumeExam();
 });
-
-// FUNGSI PEMBERSIH KODE HTML DARI COPY PASTE WEB
-function cleanHTMLTags(str) {
-    if (!str) return '';
-    // Menghapus atribut role="presentation" dan atribut style yang berlebihan dari hasil copas MathJax/Word
-    let cleanStr = str.replace(/role="presentation"/g, '');
-    cleanStr = cleanStr.replace(/style="[^"]*"/g, ''); 
-    return cleanStr;
-}
 
 function applyMathJax() { if (window.MathJax && MathJax.typesetPromise) { MathJax.typesetPromise().catch((err) => console.log('MathJax Error:', err)); } }
 function checkResumeExam() {
@@ -527,7 +534,7 @@ function renderUsers(users) {
 // -----------------------------------------------------
 function getKopHTML(title) {
     return `
-    <div class="kop" style="display: flex; align-items: center; justify-content: center; border-bottom: 4px solid #064e3b; padding-bottom: 20px; margin-bottom: 30px; position: relative; text-align: center;">
+    <div class="kop" style="display: flex; align-items: center; justify-content: center; border-bottom: 4px solid #064e3b; padding-bottom: 20px; margin-bottom: 30px; position: relative; text-align: center; page-break-after: avoid; break-after: avoid;">
         <img src="https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq" alt="Logo KKGMI" style="width: 100px; height: 100px; position: absolute; left: 10px; top: 0;">
         <div style="width: 100%; padding-left: 90px;">
             <h2 style="margin: 0; font-size: 26px; color: #064e3b; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">KELOMPOK KERJA GURU MADRASAH IBTIDAIYAH</h2>
@@ -537,8 +544,11 @@ function getKopHTML(title) {
     </div>`;
 }
 
-// FUNGSI BLOB DOWNLOAD HTML/PDF BEBAS POPUP BLOCKER
-function downloadHTMLToPDF(filename, htmlContent) {
+// -----------------------------------------------------
+// FUNGSI PENCETAKAN PDF LANGSUNG (TANPA DOWNLOAD HTML)
+// -----------------------------------------------------
+function printDocument(filename, htmlContent) {
+    const win = window.open('', '_blank');
     const html = `<!DOCTYPE html><html lang="id">
     <head>
         <meta charset="UTF-8">
@@ -550,12 +560,12 @@ function downloadHTMLToPDF(filename, htmlContent) {
             body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b; }
             .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
             img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
-            .q-box { padding-bottom: 25px; margin-bottom: 25px; }
+            .q-box { border-bottom: 1px dashed #ccc; padding-bottom: 25px; margin-bottom: 25px; page-break-inside: avoid; break-inside: avoid; }
             @media print {
                 body { padding: 0; background-color: #fff; }
-                .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
+                .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; display: block; }
                 .no-print { display: none; }
-                .q-box { page-break-inside: avoid; border-bottom: 1px solid #ccc; }
+                .q-box { page-break-inside: avoid; break-inside: avoid; }
             }
         </style>
     </head>
@@ -569,21 +579,17 @@ function downloadHTMLToPDF(filename, htmlContent) {
         </div>
         <script>
             window.onload = function() {
-                if (window.MathJax) { MathJax.typesetPromise().then(() => { setTimeout(() => window.print(), 1000); }); } 
-                else { setTimeout(() => window.print(), 1500); }
+                if (window.MathJax) { 
+                    MathJax.typesetPromise().then(() => { setTimeout(() => window.print(), 1000); }); 
+                } else { 
+                    setTimeout(() => window.print(), 1500); 
+                }
             }
         <\/script>
     </body></html>`;
     
-    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); 
-    a.href = url; 
-    a.download = `${filename}.html`; 
-    document.body.appendChild(a); 
-    a.click(); 
-    document.body.removeChild(a); 
-    URL.revokeObjectURL(url);
+    win.document.write(html); 
+    win.document.close();
 }
 
 function printFilteredRecap() {
@@ -607,7 +613,7 @@ function printFilteredRecap() {
       <p style="margin-bottom:70px;">Guru Pengampu / Pengawas</p>
       <p><strong>${namaPengawas}</strong></p>
   </div>`;
-  downloadHTMLToPDF('Rekap_Nilai_Ujian', content);
+  printDocument('Rekap_Nilai_Ujian', content);
 }
 
 function printRecap(rid) {
@@ -619,7 +625,7 @@ function printRecap(rid) {
   detailArr.forEach(item => {
     let n = item.i !== undefined ? item.i : item[0]; let s = item.s !== undefined ? item.s : item[1]; let t = item.t || 'Objektif'; let a = item.a !== undefined ? item.a : '';
     let displayAns = Array.isArray(a) ? a.join(', ') : a; displayAns = displayAns ? String(displayAns).replace(/\n/g, '<br>') : 'Tidak dijawab';
-    detailHtml += `<tr><td style="padding:8px; text-align:center;">${n}</td><td style="padding:8px; text-align:center;">${t}</td><td style="padding:8px;">${displayAns}</td><td style="padding:8px; text-align:center;">${s}</td></tr>`;
+    detailHtml += `<tr><td style="padding:8px; text-align:center;">${n}</td><td style="padding:8px; text-align:center;">${t}</td><td style="padding:8px;">${cleanHTMLTags(displayAns)}</td><td style="padding:8px; text-align:center;">${s}</td></tr>`;
   });
   detailHtml += '</tbody></table>';
   
@@ -645,9 +651,8 @@ function printRecap(rid) {
       <p><strong>${namaPengawas}</strong></p>
   </div>
   `;
-  downloadHTMLToPDF(`Hasil_Ujian_${d.nama.replace(/\s+/g, '_')}`, content);
+  printDocument(`Hasil_Ujian_${d.nama.replace(/\s+/g, '_')}`, content);
 }
-
 
 function renderAdministrasi() {
     const uniqueKelas = [...new Set(gAdminData.users.map(u => String(u.Kelas).trim()))].filter(k => k).sort();
@@ -900,7 +905,6 @@ function delExam(id){ Swal.fire({title:'Hapus Permanen?', icon:'warning', showCa
 
 function manageQ(id, examTitle) { 
     activeExamId = id; 
-    // Simpan judul ujian untuk penamaan file download nanti
     window.activeExamTitle = examTitle || 'Bank_Soal_CBT'; 
     $('#editor-q-title').html(isSurveyMode ? '<i class="fas fa-clipboard-list me-2"></i> Editor Kuesioner Survei' : '<i class="fas fa-edit me-2"></i> Editor Pertanyaan TKA');
     $('#editor-tips').html(isSurveyMode ? '<b>Tips Survei:</b> Masukkan stimulus (Teks/Gambar/Video) di area Editor, lalu pilih jenis Skala Penilaian dan tambahkan rincian pernyataan di bawahnya.' : '<i class="fas fa-lightbulb me-2"></i><b>Tips:</b> Gunakan tombol <b>Rumus</b> atau <b>Video</b> pada panel editor di bawah.');
@@ -938,7 +942,7 @@ function loadQList() {
             topActions = `<div class="d-flex justify-content-end mb-3 gap-2 flex-wrap bg-white p-3 rounded-4 shadow-sm border">
                 <label class="btn btn-outline-success shadow-sm m-0 rounded-pill px-4 fw-bold"><i class="fas fa-upload me-2"></i> Upload Excel <input type="file" hidden accept=".xlsx,.xls" onchange="handleUploadQuestionsExcel(event)"></label>
                 <button class="btn btn-info text-white shadow-sm rounded-pill px-4 fw-bold" onclick="previewAllQ()"><i class="fas fa-desktop me-2"></i> Preview Soal</button>
-                <button class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold" onclick="downloadAllQ()"><i class="fas fa-file-pdf me-2"></i> Download HTML/PDF</button>
+                <button class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold" onclick="downloadAllQ()"><i class="fas fa-print me-2"></i> Cetak PDF</button>
             </div>`;
         }
         
@@ -953,7 +957,6 @@ function loadQList() {
 
 function generateQHTML(q) {
     let inp = '';
-    // Menerapkan pembersihan HTML agar text rapi
     let cleanPertanyaan = cleanHTMLTags(q.Pertanyaan);
 
     if(q.Tipe==='PGKK') {
@@ -984,10 +987,10 @@ function previewAllQ() {
 }
 
 function downloadAllQ() {
-    let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
+    let htmlContent = ''; currentQuestionsData.forEach(q => { htmlContent += `<div class="q-box">${generateQHTML(q)}</div>`; });
     if(!htmlContent) return Swal.fire('Kosong', 'Belum ada soal untuk didownload.', 'info');
     let titleName = window.activeExamTitle ? `Arsip Soal - ${window.activeExamTitle}` : 'Arsip Bank Soal Ujian';
-    downloadHTMLToPDF(titleName.replace(/\s+/g, '_'), htmlContent);
+    printDocument(titleName.replace(/\s+/g, '_'), htmlContent);
 }
 
 function downloadAllQAdmin(eid, examTitle) {
@@ -996,9 +999,9 @@ function downloadAllQAdmin(eid, examTitle) {
         showLoad(false);
         if(res.status === 'success') {
             let htmlContent = '';
-            res.data.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:2px dashed #ccc; padding-bottom:20px; margin-bottom:20px;">${generateQHTML(q)}</div>`; });
+            res.data.forEach(q => { htmlContent += `<div class="q-box">${generateQHTML(q)}</div>`; });
             let titleName = examTitle ? `Arsip Soal Guru - ${examTitle}` : 'Arsip Soal Guru';
-            downloadHTMLToPDF(titleName.replace(/\s+/g, '_'), htmlContent);
+            printDocument(titleName.replace(/\s+/g, '_'), htmlContent);
         } else { Swal.fire('Error', res.msg, 'error'); }
     }).getSiswaSoal(eid);
 }
@@ -1011,7 +1014,7 @@ function dlSiswaSoal(eid, examTitle) {
             let htmlContent = '';
             res.data.forEach(q => { htmlContent += `<div class="q-box">${generateQHTML(q)}</div>`; });
             let titleName = examTitle ? `Arsip Soal Siswa - ${examTitle}` : 'Arsip File Soal Siswa';
-            downloadHTMLToPDF(titleName.replace(/\s+/g, '_'), htmlContent);
+            printDocument(titleName.replace(/\s+/g, '_'), htmlContent);
         } else { Swal.fire('Error', res.msg, 'error'); }
     }).getSiswaSoal(eid);
 }
@@ -1036,7 +1039,7 @@ function addNewQuestionBlock() {
 function renderQuestionBlock(q, idx) {
     const uid = q.QID ? q.QID : 'NEW_' + Math.random().toString(36).substr(2, 9);
     const nomor = q.Nomor || (idx + 1);
-    const cleanPrev = (q.Pertanyaan || 'Data Baru').replace(/<[^>]+>/g, '').substring(0, 80) + '...';
+    const cleanPrev = cleanHTMLTags(q.Pertanyaan || 'Data Baru').replace(/<[^>]+>/g, '').substring(0, 80) + '...';
     const safeJson = encodeURIComponent(JSON.stringify(q));
     
     let typeSelect = '';
@@ -1256,7 +1259,7 @@ function runExam(qs, dur, isResume) {
     const c = $('#q-slides-container'); const g = $('#nav-grid'); c.empty(); g.empty();
     qs.forEach((q,i) => {
         let inp = '';
-        let cleanPertanyaan = cleanHTMLTags(q.Pertanyaan); // Pembersihan Teks
+        let cleanPertanyaan = cleanHTMLTags(q.Pertanyaan);
         
         if(q.Tipe==='PGKK') {
             const opts = JSON.parse(q.Options||"[]");
@@ -1431,7 +1434,6 @@ function startCountdown() {
     let timeLeft = 30;
     $('#countdown-number').text(timeLeft);
     
-    // Matikan tombol skip saat pertama load
     $('#btn-skip-countdown').prop('disabled', true).html('<i class="fas fa-lock me-2"></i> Menyiapkan Survei... <span id="btn-timer">(30s)</span>');
 
     countdownTimer = setInterval(() => {
@@ -1439,17 +1441,13 @@ function startCountdown() {
         $('#countdown-number').text(timeLeft);
         
         if (timeLeft <= 0) { 
-            skipCountdown(); 
+            clearInterval(countdownTimer); 
+            $('#view-countdown').addClass('hidden'); 
+            renderSurveyForm(); 
         } else {
             $('#btn-timer').text(`(${timeLeft}s)`);
         }
     }, 1000);
-}
-
-function skipCountdown() { 
-    clearInterval(countdownTimer); 
-    $('#view-countdown').addClass('hidden'); 
-    renderSurveyForm(); 
 }
 
 function renderSurveyForm() {
@@ -1460,7 +1458,7 @@ function renderSurveyForm() {
     window.activeSurveyData.qs.forEach((q, qIdx) => {
         let scales = JSON.parse(q.Key || "[]");
         let statements = JSON.parse(q.Options || "[]");
-        let cleanStimulus = cleanHTMLTags(q.Pertanyaan); // Pembersihan HTML pada stimulus survei
+        let cleanStimulus = cleanHTMLTags(q.Pertanyaan);
         
         h += `<div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4"><div class="mb-4 survey-stimulus" style="font-size:16px;">${cleanStimulus}</div><div class="table-responsive"><table class="table table-bordered table-striped align-middle"><thead class="table-light"><tr><th>Pernyataan Detail</th>`;
         scales.forEach(s => h+= `<th class="text-center" style="width:100px;">${s}</th>`);
