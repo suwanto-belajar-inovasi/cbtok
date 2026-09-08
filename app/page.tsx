@@ -67,87 +67,50 @@ export default function Page() {
         <div className="container" style={{ maxWidth: '1100px' }}>
           <div className="row g-4 align-items-center">
             
-            {/* ================= INFORMASI & JADWAL (KOLOM KIRI) ================= */}
-            <div className="col-lg-7 d-flex flex-column justify-content-between text-white pe-lg-3">
-              <div>
-                {/* Header Title */}
-                <div className="mb-4">
-                  <h2 className="fw-bold mb-2" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                    Tryout TKA KKGMI Surabaya 10
-                  </h2>
-                  <p className="lead opacity-90 mb-0" style={{ fontSize: '1rem', textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
-                    Aplikasi Computer Based Test (CBT) resmi Kelompok Kerja Guru Madrasah Ibtidaiyah Kota Surabaya 10.
-                  </p>
-                </div>
-                
-                {/* Aturan Ujian */}
-                <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.96 }}>
-                  <h6 className="fw-bold text-success mb-3 d-flex align-items-center">
-                    <i className="fas fa-shield-alt me-2 fs-5"></i>
-                    Aturan & Tata Tertib Mengerjakan
-                  </h6>
-                  <ul className="mb-0 small text-secondary ps-3" style={{ lineHeight: '1.7' }}>
-                    <li>Pastikan koneksi internet Anda stabil sebelum mulai ujian.</li>
-                    <li>Sistem akan otomatis aktif dalam mode <b>Layar Penuh (Fullscreen)</b>.</li>
-                    <li><b>DILARANG</b> berpindah tab, membuka aplikasi lain, atau membagi layar (Split Screen). Toleransi maksimal 3 kali pelanggaran.</li>
-                    <li>Tombol <b>Selesai Ujian</b> tersedia di nomor soal terakhir. Gunakan tombol <b>Ragu-ragu</b> jika diperlukan.</li>
-                  </ul>
-                </div>
+            <div className="col-lg-7 text-white pe-lg-4 mb-4 mb-lg-0">
+              <h2 className="fw-bold mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>Tryout TKA KKGMI Surabaya 10</h2>
+              <p className="lead mb-4" style={{ fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
+                Selamat datang di Aplikasi Computer Based Test (CBT) resmi Kelompok Kerja Guru Madrasah Ibtidaiyah (KKGMI) Kota Surabaya 10.
+              </p>
+              
+              <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.95 }}>
+                <h5 className="fw-bold text-success mb-3"><i className="fas fa-list-check me-2"></i>Aturan & Cara Mengerjakan</h5>
+                <ul className="mb-0 small" style={{ paddingLeft: '1.2rem', lineHeight: '1.6' }}>
+                  <li>Pastikan koneksi internet Anda stabil sebelum mulai ujian.</li>
+                  <li>Sistem akan otomatis beralih ke mode <b>Layar Penuh (Fullscreen)</b>.</li>
+                  <li><b>DILARANG</b> membuka tab baru, aplikasi lain, atau membagi layar (Split Screen). Pelanggaran maksimal 3 kali akan membuat jawaban otomatis terkirim.</li>
+                  <li>Tombol <b>Selesai Ujian</b> hanya akan muncul di soal nomor terakhir. Gunakan tombol <b>Ragu-ragu</b> jika ingin menandai soal yang belum yakin.</li>
+                </ul>
+              </div>
 
-                {/* Jadwal Pelaksanaan */}
-                <div className="bg-white text-dark p-4 rounded-4 shadow-sm mb-4" style={{ opacity: 0.96 }}> 
-                  <h6 className="fw-bold text-success mb-3 d-flex align-items-center">
-                    <i className="fas fa-calendar-check me-2 fs-5"></i>
-                    Jadwal Pelaksanaan Tryout
-                  </h6>
-
-                  <div className="row g-3">
-                    {SCHEDULE_DATA.map((item) => (
-                      <div key={item.id} className="col-md-6">
-                        <div className="p-3 rounded-3 bg-light border h-100">
-                          <div className="d-flex align-items-center justify-content-between mb-2">
-                            <span className="fw-bold text-dark">{item.title}</span>
-                            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-2 py-1">
-                              {item.period}
-                            </span>
-                          </div>
-
-                          {/* Gelombang */}
-                          <div className="mb-3">
-                            <small className="text-muted fw-semibold d-block mb-1">Gelombang:</small>
-                            {item.waves.map((wave, idx) => (
-                              <div key={idx} className="d-flex justify-content-between small text-secondary py-1 border-bottom border-light">
-                                <span>{wave.name}</span>
-                                <span className="fw-medium text-dark">{wave.dates}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Sesi */}
-                          <div>
-                            <small className="text-muted fw-semibold d-block mb-1">Waktu Sesi (Tiap Gelombang):</small>
-                            <ul className="list-unstyled mb-0 small text-secondary">
-                              {SESSIONS.map((session, sIdx) => (
-                                <li key={sIdx} className="d-flex align-items-center mb-1">
-                                  <i className="far fa-clock text-success me-2" style={{ fontSize: '0.75rem' }}></i>
-                                  <span className="fw-medium me-1">{session.name}:</span> {session.time}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+              <div className="bg-white text-dark p-4 rounded-4 shadow-sm" style={{ opacity: 0.95 }}>
+                <h5 className="fw-bold text-success mb-3"><i className="fas fa-calendar-alt me-2"></i>Jadwal Pelaksanaan</h5>
+                <div className="row g-2 small">
+                  <div className="col-sm-6 border-bottom pb-3">
+                    <div className="fw-bold text-primary mb-1">Tryout 1 (14 - 17 Des 2026)</div>
+                    <ul className="mb-0 ps-3">
+                      <li>Gelombang 1: 14 - 15 Desember</li>
+                      <li>Gelombang 2: 16 - 17 Desember</li>
+                    </ul>
+                  </div>
+                  <div className="col-sm-6 border-bottom pb-3">
+                    <div className="fw-bold text-primary mb-1">Tryout 2 (25 - 28 Jan 2027)</div>
+                    <ul className="mb-0 ps-3">
+                      <li>Gelombang 1: 25 - 26 Januari</li>
+                      <li>Gelombang 2: 27 - 28 Januari</li>
+                    </ul>
+                  </div>
+                  <div className="col-12 pt-2">
+                    <div className="fw-bold text-danger mb-2"><i className="fas fa-clock me-1"></i> Waktu Sesi (Berlaku Setiap Gelombang):</div>
+                    <div className="d-flex flex-wrap gap-4 mt-1 bg-light p-2 rounded border">
+                      <div><b>Sesi 1:</b> 07.30 - 09.00</div>
+                      <div><b>Sesi 2:</b> 09.30 - 11.00</div>
+                      <div><b>Sesi 3:</b> 11.30 - 13.00</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Footer Kiri */}
-              <div className="small opacity-75 mb-3 mb-lg-0">
-                <i className="fas fa-info-circle me-1"></i> Apabila mengalami kendala login, silakan hubungi Proktor Sekolah masing-masing.
-              </div>
-            </div>
-            
             <div className="col-lg-5">
               <div style={{
                 background: 'white',
