@@ -267,6 +267,7 @@ export async function POST(req) {
       const [role, userId, sekolah] = args;
       
       // PERBAIKAN: Parameterized Query untuk menghindari Error Loading
+      // Menghapus WHERE e.Mapel != 'SURVEY' agar riwayat Survei ikut terpanggil
       let sql = `
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
@@ -275,8 +276,9 @@ export async function POST(req) {
         FROM Results r
         LEFT JOIN Users u ON r.SiswaID = u.ID
         LEFT JOIN Exams e ON r.ExamID = e.ExamID
-        WHERE e.Mapel != 'SURVEY'
+        WHERE 1=1
       `;
+      
       let pArgs = [];
       if (role === 'guru') {
           sql += ` AND e.PembuatID = ? AND u.Sekolah = ?`;
