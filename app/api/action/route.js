@@ -263,9 +263,10 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
+    // MEMPERBAIKI MASALAH HASIL NILAI LOADING TERUS
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
-      let query = `
+      let sql = `
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
                e.Judul AS JudulUjian, e.Mapel AS Mapel, e.PembuatID AS PembuatID,
@@ -275,9 +276,12 @@ export async function POST(req) {
         LEFT JOIN Exams e ON r.ExamID = e.ExamID
         WHERE e.Mapel != 'SURVEY'
       `;
-      if (role === 'guru') query += ` AND e.PembuatID = '${userId}' AND u.Sekolah = '${sekolah}'`;
-      
-      const results = await turso.execute(query);
+      let pArgs = [];
+      if (role === 'guru') {
+          sql += ` AND e.PembuatID = ? AND u.Sekolah = ?`;
+          pArgs.push(userId, sekolah);
+      }
+      const results = await turso.execute({ sql: sql, args: pArgs });
       return NextResponse.json({ status: 'success', data: results.rows });
     }
 
