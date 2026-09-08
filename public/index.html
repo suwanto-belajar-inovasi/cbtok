@@ -169,7 +169,7 @@
         <h3 class="fw-bold text-dark">Ujian TKA Terkirim!</h3>
         <p class="text-muted mb-4 mt-3" style="font-size: 1.1rem;">Mohon tunggu sebentar, Anda diwajibkan untuk mengisi Survei Evaluasi. Layar akan beralih otomatis dalam:</p>
         <h1 class="display-1 fw-bold text-primary mb-4" id="countdown-number">30</h1>
-        <button class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow" onclick="skipCountdown()">Lanjutkan Ke Survei Sekarang <i class="fas fa-arrow-right ms-2"></i></button>
+        <div class="spinner-border text-primary mt-2" role="status"></div>
     </div>
 </div>
 
@@ -530,6 +530,7 @@ function getKopHTML(title) {
 }
 
 // FUNGSI BLOB DOWNLOAD HTML/PDF BEBAS POPUP BLOCKER
+// Ganti fungsi cetak PDF lama agar nomor 1 langsung menyambung setelah KOP
 function downloadHTMLToPDF(filename, htmlContent) {
     const html = `<!DOCTYPE html><html lang="id">
     <head>
@@ -539,21 +540,20 @@ function downloadHTMLToPDF(filename, htmlContent) {
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"><\/script>
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
         <style>
-            body { font-family: 'Poppins', Arial, sans-serif; background-color: #f8fafc; padding: 20px; color: #1e293b; }
-            .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            body { font-family: 'Poppins', Arial, sans-serif; background-color: #fff; padding: 20px; color: #1e293b; }
+            .container { max-width: 100%; margin: 0 auto; background: white; padding: 0; }
             img { max-width: 100%; height: auto; border-radius: 6px; margin: 5px 0; }
-            .q-box { border-bottom: 2px dashed #e2e8f0; padding-bottom: 25px; margin-bottom: 25px; }
+            /* Memperbaiki jeda halaman agar nomor 1 langsung menyambung setelah KOP */
+            .q-box { border-bottom: 1px solid #ccc; padding-bottom: 15px; margin-bottom: 15px; page-break-inside: avoid; }
             @media print {
-                body { padding: 0; background-color: #fff; }
-                .container { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
                 .no-print { display: none; }
-                .q-box { page-break-inside: avoid; border-bottom: 1px solid #ccc; }
+                @page { margin: 1cm; }
             }
         </style>
     </head>
     <body>
         <div class="no-print" style="text-align: right; margin-bottom: 20px;">
-            <button onclick="window.print()" style="padding: 12px 25px; background: #0f5132; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Poppins', sans-serif;">Cetak / Simpan PDF</button>
+            <button onclick="window.print()" style="padding: 12px 25px; background: #0f5132; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Poppins', sans-serif;">Cetak PDF / Print</button>
         </div>
         <div class="container">
             ${getKopHTML(filename.replace(/_/g, ' '))}
@@ -561,21 +561,100 @@ function downloadHTMLToPDF(filename, htmlContent) {
         </div>
         <script>
             window.onload = function() {
-                if (window.MathJax) { MathJax.typesetPromise().then(() => { setTimeout(() => window.print(), 1000); }); } 
-                else { setTimeout(() => window.print(), 1500); }
+                if (window.MathJax) { MathJax.typesetPromise().then(() => { setTimeout(() => window.print(), 800); }); } 
+                else { setTimeout(() => window.print(), 1000); }
             }
         <\/script>
     </body></html>`;
     
-    const blob = new Blob([html], {type: "text/html;charset=utf-8"}); 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); 
-    a.href = url; 
-    a.download = `${filename}.html`; 
-    document.body.appendChild(a); 
-    a.click(); 
-    document.body.removeChild(a); 
-    URL.revokeObjectURL(url);
+    // Membuka dialog print langsung 
+    const win = window.open('', '', 'width=900,height=800');
+    win.document.write(html);
+    win.document.close();
+}
+
+function downloadAllQAdmin(eid) {
+    showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        showLoad(false);
+        if(res.status === 'success') {
+            let htmlContent = '';
+            res.data.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:1px dashed #ccc; padding-bottom:15px; margin-bottom:15px;">${generateQHTML(q)}</div>`; });
+            const exam = gData.exams.find(e => e.ExamID === eid);
+            const judul = exam ? exam.Judul : 'Arsip_Soal_Guru';
+            downloadHTMLToPDF(`Soal_TKA_${judul}`, htmlContent);
+        } else { Swal.fire('Error', res.msg, 'error'); }
+    }).getSiswaSoal(eid);
+}
+// Memuat tabel hasil nilai
+function renderRecapTable() {
+    let h = `<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <h5 class="fw-bold text-primary mb-0"><i class="fas fa-chart-bar me-2"></i>Rekapitulasi Nilai</h5>
+                <button class="btn btn-success shadow-sm rounded-pill px-4 fw-bold" onclick="printFilteredRecap()"><i class="fas fa-print me-2"></i> Cetak Rekap</button>
+             </div>
+             <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Waktu Submit</th>
+                                    <th class="text-start">Nama Siswa</th>
+                                    <th>Kelas</th>
+                                    <th>Mapel</th>
+                                    <th>Nilai Akhir</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+    if(!recapAllData || recapAllData.length === 0) {
+        h += `<tr><td colspan="6" class="text-muted py-4">Belum ada data nilai masuk.</td></tr>`;
+    } else {
+        window.currentFilteredData = recapAllData;
+        recapAllData.forEach(r => {
+            recapDataStore[r.ResultID] = { detail: r.Detail, nama: r.NamaSiswa, ujian: r.JudulUjian, nilai: r.TotalNilai, pembuat: r.PembuatNama };
+            h += `<tr>
+                    <td class="small text-muted">${r.WaktuSubmit}</td>
+                    <td class="text-start fw-bold">${r.NamaSiswa}</td>
+                    <td>${r.KelasSiswa}</td>
+                    <td>${r.Mapel}</td>
+                    <td><span class="badge bg-success rounded-pill px-3 fs-6">${r.TotalNilai}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="printRecap('${r.ResultID}')" title="Cetak Rincian"><i class="fas fa-print"></i></button>
+                        <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delResult('${r.ResultID}')" title="Hapus Hasil"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>`;
+        });
+    }
+    h += `</tbody></table></div></div></div>`;
+    $('#content-area').html(h);
+}
+
+// Fungsi untuk menghapus nilai individu jika siswa ingin diremet/diulang
+function delResult(rid) {
+    Swal.fire({ title: 'Hapus Nilai Secara Permanen?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(r => {
+        if(r.isConfirmed) {
+            showLoad(true);
+            google.script.run.withSuccessHandler(res => {
+                showLoad(false);
+                if(res.status === 'success') { loadPage('hasil-rekap'); toast('success', res.msg); }
+                else { Swal.fire('Error', res.msg, 'error'); }
+            }).adminDeleteResult(rid);
+        }
+    });
+}
+function dlSiswaSoal(eid) {
+    showLoad(true);
+    google.script.run.withSuccessHandler(res => {
+        showLoad(false);
+        if(res.status === 'success') {
+            let htmlContent = '';
+            res.data.forEach(q => { htmlContent += `<div class="q-box" style="border-bottom:1px dashed #ccc; padding-bottom:15px; margin-bottom:15px;">${generateQHTML(q)}</div>`; });
+            const history = gData.history.find(h => h.ExamID === eid);
+            const judul = history ? history.Judul : 'Arsip_File_Soal_Siswa';
+            downloadHTMLToPDF(`Soal_${judul}`, htmlContent);
+        } else { Swal.fire('Error', res.msg, 'error'); }
+    }).getSiswaSoal(eid);
 }
 
 function printFilteredRecap() {
@@ -1084,6 +1163,9 @@ function loadQList() {
 
 function generateQHTML(q) {
     let inp = '';
+    // Gunakan fungsi decodeHTML agar tag html seperti <p> dsb diterjemahkan dengan benar
+    let cleanedQuestion = decodeHTML(q.Pertanyaan);
+
     if(q.Tipe==='PGKK') {
         const opts = JSON.parse(q.Options||"[]");
         inp = `<table style="width:100%; border-collapse: collapse; margin-top:15px; background:white;" border="1"><thead><tr style="background:#f8f9fa;"><th style="padding:10px; text-align:left;">PERNYATAAN</th><th width="15%" style="padding:10px; text-align:center;">BENAR</th><th width="15%" style="padding:10px; text-align:center;">SALAH</th></tr></thead><tbody>`;
@@ -1099,7 +1181,7 @@ function generateQHTML(q) {
     } else {
         inp = `<textarea style="width:100%; padding:15px; border:1px solid #e2e8f0; border-radius:8px; font-family:inherit; resize:vertical;" rows="5" placeholder="Ketik jawaban di sini..."></textarea>`;
     }
-    return `<div style="font-family: 'Poppins', Arial, sans-serif; padding:15px 0; margin-bottom:20px;"><div style="background:#0f5132; color:white; display:inline-block; padding:5px 15px; border-radius:15px; font-size:13px; font-weight:bold; margin-bottom:15px;">Soal No. ${q.Nomor||''}</div><div style="margin-bottom:20px; font-size:16px; line-height:1.6; word-wrap: break-word;">${q.Pertanyaan}</div>${inp}</div>`;
+    return `<div style="font-family: 'Poppins', Arial, sans-serif; padding:15px 0; margin-bottom:20px;"><div style="background:#0f5132; color:white; display:inline-block; padding:5px 15px; border-radius:15px; font-size:13px; font-weight:bold; margin-bottom:15px;">Soal No. ${q.Nomor||''}</div><div style="margin-bottom:20px; font-size:16px; line-height:1.6; word-wrap: break-word;">${cleanedQuestion}</div>${inp}</div>`;
 }
 
 function previewAllQ() {
@@ -1608,6 +1690,31 @@ function submitSurvey() {
             $('#view-dashboard').removeClass('hidden'); loadPage('siswa-home');
         });
     }).submitSurveyResponse(user.ID, window.activeSurveyData.header.ExamID, answers);
+}
+    // Fungsi untuk merapikan teks HTML yang bocor dari hasil copy-paste
+function decodeHTML(htmlText) {
+    let txt = document.createElement("textarea");
+    txt.innerHTML = htmlText;
+    return txt.value;
+}
+
+// Fungsi agar tombol menu Reset Cache berfungsi penuh
+function handleResetCache() {
+    Swal.fire({
+        title: 'Bersihkan Cache Sistem?',
+        text: 'Ini akan mereset penyimpanan lokal yang macet dan menyegarkan sistem secara penuh.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-bolt"></i> Ya, Reset Sekarang',
+        cancelButtonText: 'Batal'
+    }).then((r) => {
+        if(r.isConfirmed) {
+            localStorage.removeItem('cbt_active_exam');
+            google.script.run.withSuccessHandler(() => {
+                window.location.reload(true);
+            }).sysResetCache();
+        }
+    });
 }
 </script>
 </body>
