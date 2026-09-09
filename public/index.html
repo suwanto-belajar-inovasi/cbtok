@@ -858,6 +858,7 @@ function downloadAllQAdmin(eid) {
             downloadHTMLToPDF(`Soal_TKA_${judul}`, htmlContent);
         } else { Swal.fire('Error', res.msg, 'error'); }
     }).getSiswaSoal(eid);
+}
 // Memuat tabel hasil nilai
 function renderRecapTable() {
     const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
