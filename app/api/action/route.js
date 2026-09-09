@@ -318,11 +318,13 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dilaporkan' });
     }
 
+    // Auto-create kolom secara terpisah & aman agar monitoring 100% bekerja
     if (action === 'updateClientProgress') {
-        const [, userId, terjawab] = args; // Abaikan examId dan totalQ untuk menghindari error ESLint
+        const userId = args[1]; 
+        const terjawab = args[2];
         
-        try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (e) { console.log("Col Terjawab OK", e.message); }
-        try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (e) { console.log("Col Status OK", e.message); }
+        try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (e) {}
+        try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (e) {}
         
         await turso.execute({ 
             sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
@@ -332,9 +334,11 @@ export async function POST(req) {
     }
 
     if (action === 'getLiveMonitoring') {
-       const [, role, sekolah] = args;
+       const role = args[1] || '';
+       const sekolah = args[2] || '';
        let sql = "SELECT * FROM Users WHERE Role='siswa'";
        let pArgs = [];
+       
        if (role === 'guru') { 
            sql += " AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))"; 
            pArgs.push(sekolah); 
@@ -346,19 +350,18 @@ export async function POST(req) {
                status: 'success', 
                data: users.rows.map(u => ({ 
                    id: u.ID, 
-                   nama: u.Nama, 
-                   kelas: u.Kelas, 
+                   nama: u.Nama || 'Tanpa Nama', 
+                   kelas: u.Kelas || '-', 
                    terjawab: u.Terjawab != null ? u.Terjawab : 0, 
-                   total: 10, 
+                   total: 10, // Default baseline jika total soal dinamis belum dipasing
                    status: u.Status || 'Offline' 
                })) 
            });
        } catch (error) {
            console.log("Live monitoring fetch error", error.message);
-           return NextResponse.json({ status: 'success', data: [] });
+           return NextResponse.json({ status: 'error', msg: error.message });
        }
     }
-
     if (action === 'sysResetCache' || action === 'autosaveAnswer') return NextResponse.json({ status: 'success' });
     
     return NextResponse.json({ status: 'success', data: [] });
