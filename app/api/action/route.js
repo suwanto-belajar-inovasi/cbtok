@@ -1,4 +1,65 @@
-v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
+export const dynamic = 'force-dynamic';
+import { NextResponse } from 'next/server';
+import { turso } from '../../../lib/turso';
+
+export async function POST(req) {
+  try {
+    const { action, args } = await req.json();
+
+    if (action === 'getDashboardData') {
+      const [role, userId, , sekolah] = args; // Mengabaikan variabel kelas agar lolos ESLint
+      let exams, users;
+      
+      if (role === 'guru') {
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
+        users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))", args: [sekolah] });
+      } else {
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
+        users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
+      }
+      
+      let output = { logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' };
+      
+      if (role === 'admin' || role === 'guru') {
+        output.exams = exams.rows;
+        output.stats = { 
+            totalSiswa: users.rows.length, 
+            totalUjian: exams.rows.length, 
+            activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length 
+        };
+
+        const schoolRankQuery = await turso.execute(`
+            SELECT u.Sekolah, AVG(r.TotalNilai) as RataRata 
+            FROM Results r 
+            JOIN Users u ON r.SiswaID = u.ID 
+            JOIN Exams e ON r.ExamID = e.ExamID
+            WHERE e.Mapel != 'SURVEY'
+            GROUP BY u.Sekolah 
+            ORDER BY RataRata DESC
+        `);
+        output.schoolRanks = schoolRankQuery.rows;
+
+        if (role === 'guru') {
+            const studentRankQuery = await turso.execute({
+                sql: `SELECT u.Nama, u.Kelas, e.Mapel, AVG(r.TotalNilai) as RataRata 
+                      FROM Results r 
+                      JOIN Users u ON r.SiswaID = u.ID 
+                      JOIN Exams e ON r.ExamID = e.ExamID 
+                      WHERE LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?)) AND e.Mapel != 'SURVEY'
+                      GROUP BY u.ID, e.Mapel 
+                      ORDER BY e.Mapel ASC, RataRata DESC`,
+                args: [sekolah]
+            });
+            output.studentRanks = studentRankQuery.rows;
+        }
+        
+        if (role === 'admin') {
+            const surveys = await turso.execute("SELECT * FROM Exams WHERE Mapel = 'SURVEY'");
+            output.surveys = surveys.rows;
+        }
+
+      } else if (role === 'siswa') {
+        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
         const history = await turso.execute({ 
           sql: "SELECT r.ResultID, r.ExamID, r.WaktuSubmit, r.TotalNilai as Nilai, e.Judul, e.AllowDownloadR, e.AllowDownloadQ, e.ShowStats, r.Pelanggaran FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.SiswaID = ? AND e.Mapel != 'SURVEY'", 
           args: [userId] 
@@ -9,12 +70,11 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
     }
 
     if (action === 'getAdminData') {
-      const [role, userId, kelas, sekolah] = args;
+      const [role, , , sekolah] = args;
       let exams, users;
       if (role === 'guru') {
-        // PERBAIKAN 2: Hapus filter "PembuatID = ?" agar Guru bisa mencetak Administrasi untuk Ujian Admin
         exams = await turso.execute("SELECT * FROM Exams");
-        users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
+        users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))", args: [sekolah] });
       } else {
         exams = await turso.execute("SELECT * FROM Exams");
         users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
@@ -23,9 +83,9 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
     }
 
     if (action === 'getUserList') {
-      const [role, uid, sekolah] = args;
+      const [role, , sekolah] = args;
       let users;
-      if (role === 'guru') users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
+      if (role === 'guru') users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))", args: [sekolah] });
       else users = await turso.execute("SELECT * FROM Users"); 
       return NextResponse.json({ status: 'success', data: users.rows });
     }
@@ -124,8 +184,10 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
            args: ['SRES' + Date.now(), uid, sid, JSON.stringify(answers)] 
         });
         
-        // Update Status Siswa menjadi "Selesai" jika Submit Survei berhasil
-        try { await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=0 WHERE ID=?", args: [uid] }); } catch(e){}
+        try { 
+            await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=0 WHERE ID=?", args: [uid] }); 
+        } catch(e){ console.log("Ignore status update", e.message); }
+        
         return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
     }
 
@@ -204,14 +266,15 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
            args: ['RES' + Date.now(), uid, eid, finalScore100, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] 
        });
        
-       // Update Status Siswa menjadi "Selesai" jika Submit Ujian berhasil
-       try { await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=0 WHERE ID=?", args: [uid] }); } catch(e){}
+       try { 
+           await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=0 WHERE ID=?", args: [uid] }); 
+       } catch(e){ console.log("Ignore status update", e.message); }
 
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
     if (action === 'getRecapList') {
-      const [role, userId, sekolah] = args;
+      const [role, , sekolah] = args;
       
       let sql = `
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
@@ -226,8 +289,7 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
       
       let pArgs = [];
       if (role === 'guru') {
-          // PERBAIKAN 3: Hapus "e.PembuatID = ?" agar Guru bisa melihat nilai ujian yang dibuat Admin, cukup filter by Sekolah
-          sql += ` AND u.Sekolah = ?`;
+          sql += ` AND LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?))`;
           pArgs.push(sekolah);
       }
       
@@ -256,37 +318,27 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
        return NextResponse.json({ status: 'success', msg: 'Berhasil dilaporkan' });
     }
 
-    // PERBAIKAN 4: Auto-Create kolom Database & Tangkap progres real-time untuk Monitoring
     if (action === 'updateClientProgress') {
-        const [examId, userId, terjawab, totalQ] = args;
-        try {
-            await turso.execute({ 
-                sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
-                args: [terjawab, userId] 
-            });
-        } catch (e) {
-            // Jika kolom belum ada di database, buat kolomnya secara otomatis
-            if (e.message.toLowerCase().includes('column')) {
-                try {
-                    await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0");
-                    await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'");
-                    await turso.execute({ 
-                        sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
-                        args: [terjawab, userId] 
-                    });
-                } catch(err) {
-                    console.error("Gagal Auto-Migrate Database:", err);
-                }
-            }
-        }
+        const [, userId, terjawab] = args; // Abaikan examId dan totalQ untuk menghindari error ESLint
+        
+        try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (e) { console.log("Col Terjawab OK", e.message); }
+        try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (e) { console.log("Col Status OK", e.message); }
+        
+        await turso.execute({ 
+            sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
+            args: [terjawab, userId] 
+        });
         return NextResponse.json({ status: 'success' });
     }
 
     if (action === 'getLiveMonitoring') {
-       const [id, role, sekolah] = args;
+       const [, role, sekolah] = args;
        let sql = "SELECT * FROM Users WHERE Role='siswa'";
        let pArgs = [];
-       if (role === 'guru') { sql += " AND Sekolah = ?"; pArgs.push(sekolah); }
+       if (role === 'guru') { 
+           sql += " AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))"; 
+           pArgs.push(sekolah); 
+       }
        
        try {
            const users = await turso.execute({ sql: sql, args: pArgs });
@@ -302,6 +354,7 @@ v        output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
                })) 
            });
        } catch (error) {
+           console.log("Live monitoring fetch error", error.message);
            return NextResponse.json({ status: 'success', data: [] });
        }
     }
