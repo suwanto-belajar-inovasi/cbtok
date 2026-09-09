@@ -905,6 +905,35 @@ function renderRecapRows(data) {
         toggleBulkDeleteBtn();
     }
 }
+    
+function downloadExcelRecap() {
+    if(!window.currentFilteredData || window.currentFilteredData.length === 0) { 
+        return Swal.fire('Data Kosong', 'Tidak ada data nilai yang tampil untuk diunduh.', 'info'); 
+    }
+    
+    const fUjian = $('#filter-ujian').val() || 'Semua_Ujian'; 
+    const fSekolah = $('#filter-sekolah').val() || 'Semua_Sekolah';
+    
+    // Siapkan data array untuk SheetJS
+    let dataToExport = window.currentFilteredData.map((r, i) => ({
+        "No": i + 1,
+        "Waktu Submit": r.WaktuSubmit,
+        "Nama Siswa": r.NamaSiswa,
+        "Kelas": r.KelasSiswa || '-',
+        "Sekolah": r.SekolahSiswa || '-',
+        "Mapel": r.Mapel,
+        "Judul Ujian": r.JudulUjian,
+        "Nilai Akhir": r.TotalNilai
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wscols = [ {wch:5}, {wch:22}, {wch:35}, {wch:10}, {wch:30}, {wch:15}, {wch:35}, {wch:12} ];
+    ws['!cols'] = wscols;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap_Nilai");
+    XLSX.writeFile(wb, `Rekap_Nilai_${fSekolah}_${fUjian}.xlsx`);
+}
 
 // Logika Pencarian & Filter
 function applyFilterRecap() {
@@ -1378,11 +1407,17 @@ function renderContent(page) {
             h += `<div class="table-responsive bg-white rounded-4 shadow-sm p-3 border"><table class="table table-hover align-middle mb-0"><thead><tr><th>Tanggal & Waktu</th><th>Nama Ujian</th><th>Nilai Akhir</th><th>Status / Aksi Lanjutan</th></tr></thead><tbody>`;
             gData.history.forEach(r => { 
                 let displayNilai = (r.ShowStats === 'Yes') ? `<span class="badge bg-success fs-6 shadow-sm px-3 rounded-pill">${r.Nilai}</span>` : `<span class="badge bg-secondary fs-6 shadow-sm px-3 rounded-pill"><i class="fas fa-lock"></i> Rahasia</span>`;
+                                let actions = '';
                 
-                let actions = '';
-                if(r.AllowDownloadQ === 'Yes') actions += `<button class="btn btn-sm btn-outline-info me-2 mt-1 rounded-pill px-3 shadow-sm" onclick="dlSiswaSoal('${r.ExamID}')"><i class="fas fa-file-alt me-1"></i> Soal PDF</button>`;
+                // Cek jika Guru mengizinkan unduh soal
+                if(r.AllowDownloadQ === 'Yes') {
+                    actions += `<button class="btn btn-sm btn-outline-info me-2 mt-1 rounded-pill px-3 shadow-sm" onclick="dlSiswaSoal('${r.ExamID}')"><i class="fas fa-file-alt me-1"></i> Soal PDF</button>`;
+                }
                 
-                if(r.ShowStats === 'Yes' && r.AllowDownloadR === 'Yes') actions += `<button class="btn btn-sm btn-success me-2 mt-1 rounded-pill px-3 shadow-sm" onclick="dlSiswaHasil('${r.ResultID}')"><i class="fas fa-file-pdf me-1"></i> Hasil PDF</button>`;
+                // Tampilkan Download Hasil PDF selama ShowStats tidak 'No' (Baik untuk Ujian maupun Survei)
+                if(r.ShowStats !== 'No' && r.ShowStats !== 'Tidak') {
+                    actions += `<button class="btn btn-sm btn-success me-2 mt-1 rounded-pill px-3 shadow-sm" onclick="dlSiswaHasil('${r.ResultID}')"><i class="fas fa-file-pdf me-1"></i> Hasil PDF</button>`;
+                }
                 
                 actions += `<button class="btn btn-sm btn-outline-danger mt-1 rounded-pill px-3 shadow-sm" onclick="laporTrobel('${r.ResultID}')"><i class="fas fa-exclamation-triangle me-1"></i> Lapor Trobel</button>`;
 
