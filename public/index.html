@@ -507,7 +507,53 @@ function loadPage(page) {
 }
 
 function encodeImageFileAsURL(element) { let file = element.files[0]; let reader = new FileReader(); reader.onloadend = function() { $('#mu-foto-b64').val(reader.result); }; if(file) reader.readAsDataURL(file); }
+function fetchLiveMonitor(isSilent = false) {
+    // PERBAIKAN: Hapus showLoad(true) (loader layar penuh) agar layar tidak freeze.
+    // Gunakan spinner lokalan saja di dalam kotak grid.
+    if(!isSilent) {
+        $('#monitor-grid').html('<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Memuat status siswa...</p></div>');
+    }
 
+    google.script.run
+        .withSuccessHandler(res => {
+            if(res.status === 'success') {
+                let h = '';
+                if(!res.data || res.data.length === 0) {
+                    h = '<div class="col-12 alert alert-light text-center py-4 border shadow-sm rounded-4">Belum ada siswa terpantau di sekolah Anda.</div>';
+                } else {
+                    res.data.forEach(u => {
+                        let pct = u.total > 0 ? Math.round((u.terjawab / u.total) * 100) : 0;
+                        if (pct > 100) pct = 100; // Mencegah bar melebihi kotak jika jumlah soal dinamis
+                        let statusColor = u.status === 'Offline' ? 'bg-secondary' : (pct === 100 ? 'bg-success' : 'bg-primary');
+                        
+                        h += `<div class="col-md-4 col-lg-3">
+                                <div class="card shadow-sm border-0 rounded-4 h-100">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="fw-bold text-dark text-truncate d-block" style="max-width: 70%;">${u.nama}</span> 
+                                            <span class="badge ${statusColor} rounded-pill">${u.status}</span>
+                                        </div>
+                                        <div class="small text-muted mb-2"><i class="fas fa-user-graduate me-1"></i> Kelas: ${u.kelas || '-'}</div>
+                                        <div class="progress rounded-pill bg-light border" style="height: 12px;">
+                                            <div class="progress-bar ${statusColor}" style="width: ${pct}%"></div>
+                                        </div>
+                                        <div class="small text-end mt-2 fw-bold text-muted">${u.terjawab} / ${u.total} Dijawab</div>
+                                    </div>
+                                </div>
+                              </div>`;
+                    });
+                }
+                $('#monitor-grid').html(h);
+            } else {
+                $('#monitor-grid').html(`<div class="col-12 alert alert-danger text-center">Gagal memuat: ${res.msg}</div>`);
+            }
+        })
+        .withFailureHandler(err => {
+            // PERBAIKAN: Menambahkan failure handler agar jika koneksi putus, loader tidak macet
+            $('#monitor-grid').html(`<div class="col-12 text-center py-5 text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>Koneksi server terputus. Sistem akan otomatis mencoba lagi.</div>`);
+        })
+        .getLiveMonitoring(user.ID, user.Role, user.Sekolah);
+}
 function renderMonitoring() {
     let h = `<div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm border rounded-4">
                 <h5 class="fw-bold text-primary mb-0"><i class="fas fa-desktop me-2"></i>Live Monitoring Ujian</h5>
