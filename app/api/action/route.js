@@ -11,7 +11,8 @@ export async function POST(req) {
       let exams, users;
       
       if (role === 'guru') {
-        exams = await turso.execute({ sql: "SELECT * FROM Exams WHERE PembuatID = ? AND Mapel != 'SURVEY'", args: [userId] });
+        // PERBAIKAN 1: Hapus filter "PembuatID = ?" agar Guru bisa melihat Ujian yang dibuat Admin
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
         users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
       } else {
         exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
@@ -73,7 +74,8 @@ export async function POST(req) {
       const [role, userId, kelas, sekolah] = args;
       let exams, users;
       if (role === 'guru') {
-        exams = await turso.execute({ sql: "SELECT * FROM Exams WHERE PembuatID = ?", args: [userId] });
+        // PERBAIKAN 2: Hapus filter "PembuatID = ?" agar Guru bisa mencetak Administrasi untuk Ujian Admin
+        exams = await turso.execute("SELECT * FROM Exams");
         users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND Sekolah = ?", args: [sekolah] });
       } else {
         exams = await turso.execute("SELECT * FROM Exams");
@@ -183,6 +185,9 @@ export async function POST(req) {
            sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, 0, ?, 'Survey Response')", 
            args: ['SRES' + Date.now(), uid, sid, JSON.stringify(answers)] 
         });
+        
+        // Update Status Siswa menjadi "Selesai" jika Submit Survei berhasil
+        try { await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=0 WHERE ID=?", args: [uid] }); } catch(e){}
         return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
     }
 
@@ -260,14 +265,16 @@ export async function POST(req) {
            sql: "INSERT INTO Results (ResultID, SiswaID, ExamID, TotalNilai, Detail, Pelanggaran) VALUES (?, ?, ?, ?, ?, ?)", 
            args: ['RES' + Date.now(), uid, eid, finalScore100, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] 
        });
+       
+       // Update Status Siswa menjadi "Selesai" jika Submit Ujian berhasil
+       try { await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=0 WHERE ID=?", args: [uid] }); } catch(e){}
+
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
     if (action === 'getRecapList') {
       const [role, userId, sekolah] = args;
       
-      // PERBAIKAN: Parameterized Query untuk menghindari Error Loading
-      // Menghapus WHERE e.Mapel != 'SURVEY' agar riwayat Survei ikut terpanggil
       let sql = `
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
@@ -281,8 +288,9 @@ export async function POST(req) {
       
       let pArgs = [];
       if (role === 'guru') {
-          sql += ` AND e.PembuatID = ? AND u.Sekolah = ?`;
-          pArgs.push(userId, sekolah);
+          // PERBAIKAN 3: Hapus "e.PembuatID = ?" agar Guru bisa melihat nilai ujian yang dibuat Admin, cukup filter by Sekolah
+          sql += ` AND u.Sekolah = ?`;
+          pArgs.push(sekolah);
       }
       
       const results = await turso.execute({ sql: sql, args: pArgs });
@@ -310,16 +318,57 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dilaporkan' });
     }
 
+    // PERBAIKAN 4: Auto-Create kolom Database & Tangkap progres real-time untuk Monitoring
+    if (action === 'updateClientProgress') {
+        const [examId, userId, terjawab, totalQ] = args;
+        try {
+            await turso.execute({ 
+                sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
+                args: [terjawab, userId] 
+            });
+        } catch (e) {
+            // Jika kolom belum ada di database, buat kolomnya secara otomatis
+            if (e.message.toLowerCase().includes('column')) {
+                try {
+                    await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0");
+                    await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'");
+                    await turso.execute({ 
+                        sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
+                        args: [terjawab, userId] 
+                    });
+                } catch(err) {
+                    console.error("Gagal Auto-Migrate Database:", err);
+                }
+            }
+        }
+        return NextResponse.json({ status: 'success' });
+    }
+
     if (action === 'getLiveMonitoring') {
        const [id, role, sekolah] = args;
        let sql = "SELECT * FROM Users WHERE Role='siswa'";
        let pArgs = [];
        if (role === 'guru') { sql += " AND Sekolah = ?"; pArgs.push(sekolah); }
-       const users = await turso.execute({ sql: sql, args: pArgs });
-       return NextResponse.json({ status: 'success', data: users.rows.map(u => ({ id: u.ID, nama: u.Nama, kelas: u.Kelas, terjawab: 0, total: 10, status: 'Offline' })) });
+       
+       try {
+           const users = await turso.execute({ sql: sql, args: pArgs });
+           return NextResponse.json({ 
+               status: 'success', 
+               data: users.rows.map(u => ({ 
+                   id: u.ID, 
+                   nama: u.Nama, 
+                   kelas: u.Kelas, 
+                   terjawab: u.Terjawab != null ? u.Terjawab : 0, 
+                   total: 10, 
+                   status: u.Status || 'Offline' 
+               })) 
+           });
+       } catch (error) {
+           return NextResponse.json({ status: 'success', data: [] });
+       }
     }
 
-    if (action === 'sysResetCache' || action === 'updateClientProgress' || action === 'autosaveAnswer') return NextResponse.json({ status: 'success' });
+    if (action === 'sysResetCache' || action === 'autosaveAnswer') return NextResponse.json({ status: 'success' });
     
     return NextResponse.json({ status: 'success', data: [] });
   } catch (error) {
