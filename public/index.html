@@ -94,14 +94,17 @@
             <li><a onclick="loadPage('guru-monitoring')" class="nav-link"><i class="fas fa-tv me-3"></i>Live Monitor</a></li>
             <li><a onclick="loadPage('admin-administrasi')" class="nav-link text-info"><i class="fas fa-print me-3"></i>Administrasi</a></li>
             <li><a onclick="handleResetCache()" class="nav-link text-warning"><i class="fas fa-bolt me-3"></i>Reset Cache</a></li>
-        </ul>
+        </ul>        
         <ul class="list-unstyled components hidden" id="menu-guru">
             <li><a onclick="loadPage('admin-home')" class="nav-link active"><i class="fas fa-home me-3"></i>Dashboard</a></li>
             <li><a onclick="loadPage('admin-users')" class="nav-link"><i class="fas fa-users me-3"></i>Data Peserta</a></li>
+            <!-- Menu Bank Soal dikembalikan agar Guru bisa Download Soal yang diizinkan Admin -->
+            <li><a onclick="loadPage('admin-ujian')" class="nav-link"><i class="fas fa-file-alt me-3"></i>Bank Soal TKA</a></li>
             <li><a onclick="loadPage('hasil-rekap')" class="nav-link"><i class="fas fa-poll me-3"></i>Hasil Nilai</a></li>
             <li><a onclick="loadPage('guru-monitoring')" class="nav-link"><i class="fas fa-desktop me-3"></i>Live Monitor</a></li>
             <li><a onclick="loadPage('admin-administrasi')" class="nav-link text-info"><i class="fas fa-print me-3"></i>Administrasi</a></li>
         </ul>
+
         <ul class="list-unstyled components hidden" id="menu-siswa">
             <li><a onclick="loadPage('siswa-home')" class="nav-link active"><i class="fas fa-pencil-alt me-3"></i>Ujian Saya</a></li>
         </ul>
