@@ -524,11 +524,12 @@ function renderMonitoring() {
         else clearInterval(monitorInterval);
     }, 15000); // Polling setiap 15 detik
 }
-
 // Fungsi untuk memuat kerangka Data Peserta beserta Filter Pencarian
 function renderUsers(users) {
     window.allUsersData = users; // Simpan data global untuk filter
-    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
+    const role = String(user.Role).trim().toLowerCase();
+    const isAdmin = role === 'admin';
+    const canEdit = role === 'admin' || role === 'guru'; // Guru & Admin bisa edit
     
     // Ambil daftar sekolah unik untuk dropdown filter
     let uniqueSekolah = [...new Set(users.map(u => u.Sekolah || ''))].filter(Boolean);
@@ -541,6 +542,13 @@ function renderUsers(users) {
             <button class="btn btn-outline-success shadow-sm m-0 me-2 rounded-pill px-3 mb-2" onclick="downloadUserTemplate()"><i class="fas fa-download me-1"></i> Template Excel</button>
             <button class="btn btn-danger shadow-sm m-0 rounded-pill px-3 mb-2 fw-bold hidden" id="btn-bulk-delete-users" onclick="bulkDeleteUsers()"><i class="fas fa-trash me-1"></i> Hapus Terpilih</button>
             ` : `<h5 class="fw-bold text-primary mb-0"><i class="fas fa-users me-2"></i>Data Siswa Anda</h5>`}
+            
+            ${canEdit ? `
+            <label class="btn btn-outline-primary shadow-sm m-0 me-2 rounded-pill px-3 mb-2" title="Nama file harus sama dengan Username (contoh: siswa01.jpg)">
+                <i class="fas fa-images me-1"></i> Upload Foto Masal
+                <input type="file" hidden multiple accept="image/*" onchange="handleBulkPhotoUpload(event)">
+            </label>
+            ` : ''}
         </div>
     </div>
     
@@ -573,7 +581,7 @@ function renderUsers(users) {
                             <th>Role</th>
                             <th>Kelas</th>
                             <th>Sekolah</th>
-                            ${isAdmin ? '<th>Aksi</th>' : ''}
+                            ${canEdit ? '<th>Aksi</th>' : ''}
                         </tr>
                     </thead>
                     <tbody id="users-tbody"></tbody>
@@ -588,11 +596,13 @@ function renderUsers(users) {
 
 // Fungsi untuk merender isi (baris) tabel pengguna berdasarkan filter
 function renderUserRows(data) {
-    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
+    const role = String(user.Role).trim().toLowerCase();
+    const isAdmin = role === 'admin';
+    const canEdit = role === 'admin' || role === 'guru'; // Guru diizinkan melihat tombol aksi
     let h = '';
     
     if(!data || data.length === 0) {
-        h = `<tr><td colspan="${isAdmin ? 8 : 7}" class="text-center text-muted py-4">Data peserta tidak ditemukan.</td></tr>`;
+        h = `<tr><td colspan="${isAdmin ? 8 : (canEdit ? 7 : 6)}" class="text-center text-muted py-4">Data peserta tidak ditemukan.</td></tr>`;
     } else {
         data.forEach(u => {
             const safeData = encodeURIComponent(JSON.stringify(u));
@@ -609,9 +619,9 @@ function renderUserRows(data) {
                 <td><span class="badge bg-${String(u.Role).trim().toLowerCase()==='admin'?'danger':(String(u.Role).trim().toLowerCase()==='guru'?'warning text-dark':'primary')}">${u.Role}</span></td>
                 <td>${u.Kelas || '-'}</td>
                 <td>${u.Sekolah || '-'}</td>
-                ${isAdmin ? `<td>
+                ${canEdit ? `<td>
                     <button class="btn btn-sm btn-outline-dark me-1 rounded-circle" onclick="editUser('${safeData}')" title="Edit"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delUser('${u.ID}')" title="Hapus"><i class="fas fa-trash"></i></button>
+                    ${isAdmin ? `<button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delUser('${u.ID}')" title="Hapus"><i class="fas fa-trash"></i></button>` : ''}
                 </td>` : ''}
             </tr>`;
         });
@@ -621,6 +631,81 @@ function renderUserRows(data) {
     $('#check-all-users').prop('checked', false);
     if(isAdmin) toggleBulkDeleteUsersBtn();
 }
+// Logika Upload Foto Masal (Mencocokkan nama file dengan Username)
+async function handleBulkPhotoUpload(event) {
+    const files = event.target.files;
+    if(!files || files.length === 0) return;
+
+    let uploadQueue = [];
+
+    // Proses membaca seluruh file yang dipilih
+    for(let i = 0; i < files.length; i++) {
+        let file = files[i];
+        // Ambil nama file tanpa ekstensi (.jpg, .png, dll)
+        let filename = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        
+        // Cari user yang usernamenya sama persis dengan nama file (tidak sensitif huruf besar/kecil)
+        let matchedUser = window.allUsersData.find(u => String(u.Username).toLowerCase() === String(filename).toLowerCase());
+        
+        if(matchedUser) {
+            // Konversi file gambar menjadi format Base64
+            let base64str = await new Promise((resolve) => {
+                let reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+            
+            // Siapkan payload data untuk diupdate
+            let updatedUser = {
+                id: matchedUser.ID,
+                nama: matchedUser.Nama,
+                tglLahir: matchedUser.TglLahir,
+                username: matchedUser.Username,
+                password: matchedUser.Password,
+                role: matchedUser.Role,
+                kelas: matchedUser.Kelas,
+                sekolah: matchedUser.Sekolah,
+                foto: base64str
+            };
+            uploadQueue.push(updatedUser);
+        }
+    }
+
+    // Kosongkan input agar bisa mengupload file yang sama lagi jika perlu
+    event.target.value = '';
+
+    if(uploadQueue.length === 0) {
+        return Swal.fire('Tidak Ada Kecocokan', 'Tidak ada nama file foto yang cocok dengan Username peserta. Pastikan nama file sama persis dengan username (cth: siswa01.jpg).', 'info');
+    }
+
+    // Konfirmasi eksekusi penyimpanan ke database
+    Swal.fire({
+        title: `Ditemukan ${uploadQueue.length} Foto Cocok!`,
+        text: "Mulai proses upload foto ke database?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Upload Sekarang'
+    }).then(async (r) => {
+        if(r.isConfirmed) {
+            showLoad(true);
+            let successCount = 0;
+            // Kirim antrean upload secara berurutan agar tidak overload
+            for(let data of uploadQueue) {
+                await new Promise(resolve => {
+                    google.script.run
+                        .withSuccessHandler(() => { successCount++; resolve(); })
+                        .withFailureHandler(() => resolve())
+                        .adminManageUser('save', data);
+                });
+            }
+            showLoad(false);
+            Swal.fire('Selesai', `Berhasil mengupload ${successCount} foto.`, 'success');
+            loadPage('admin-users'); // Segarkan data tabel
+        }
+    });
+}
+
+
 
 // Logika Filter (Nama/Username dan Sekolah)
 function applyFilterUsers() {
