@@ -67,6 +67,7 @@ export default function Page() {
         <div className="container" style={{ maxWidth: '1100px' }}>
           <div className="row g-4 align-items-center">
             
+            {/* --- BAGIAN KIRI (INFO) --- */}
             <div className="col-lg-7 text-white pe-lg-4 mb-4 mb-lg-0">
               <h2 className="fw-bold mb-3" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>Tryout TKA KKGMI Surabaya 10</h2>
               <p className="lead mb-4" style={{ fontSize: '1.1rem', textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}>
@@ -128,7 +129,9 @@ export default function Page() {
                   </div>
                 </div>
               </div>
+            </div>
 
+            {/* --- BAGIAN KANAN (LOGIN) --- */}
             <div className="col-lg-5">
               <div style={{
                 background: 'white',
