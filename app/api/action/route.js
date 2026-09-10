@@ -6,7 +6,20 @@ export async function POST(req) {
   try {
     const { action, args } = await req.json();
 
-    // DALAM FUNGSI: if (action === 'getDashboardData') {
+    if (action === 'getDashboardData') {
+      const [role, userId, , sekolah] = args; 
+      let exams, users;
+      
+      if (role === 'guru') {
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
+        users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))", args: [sekolah] });
+      } else {
+        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
+        users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
+      }
+      
+      let output = { logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' };
+      
       if (role === 'admin' || role === 'guru') {
         output.exams = exams.rows;
         output.stats = { 
@@ -15,26 +28,24 @@ export async function POST(req) {
             activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length 
         };
 
-        // PERBAIKAN 1: Filter rata-rata global hanya untuk nilai yang sudah dirilis jika role = guru
         const schoolRankQuery = await turso.execute(`
             SELECT u.Sekolah, AVG(r.TotalNilai) as RataRata 
             FROM Results r 
             JOIN Users u ON r.SiswaID = u.ID 
             JOIN Exams e ON r.ExamID = e.ExamID
-            WHERE e.Mapel != 'SURVEY' ${role === 'guru' ? "AND e.ShowStats = 'Yes'" : ""}
+            WHERE e.Mapel != 'SURVEY' ${role === 'guru' ? "AND e.ShowStats IN ('Yes', 'Aktif')" : ""}
             GROUP BY u.Sekolah 
             ORDER BY RataRata DESC
         `);
         output.schoolRanks = schoolRankQuery.rows;
 
         if (role === 'guru') {
-            // PERBAIKAN 2: Filter siswa sekolah guru hanya untuk nilai yang sudah dirilis
             const studentRankQuery = await turso.execute({
                 sql: `SELECT u.Nama, u.Kelas, e.Mapel, AVG(r.TotalNilai) as RataRata 
                       FROM Results r 
                       JOIN Users u ON r.SiswaID = u.ID 
                       JOIN Exams e ON r.ExamID = e.ExamID 
-                      WHERE LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?)) AND e.Mapel != 'SURVEY' AND e.ShowStats = 'Yes'
+                      WHERE LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?)) AND e.Mapel != 'SURVEY' AND e.ShowStats IN ('Yes', 'Aktif')
                       GROUP BY u.ID, e.Mapel 
                       ORDER BY e.Mapel ASC, RataRata DESC`,
                 args: [sekolah]
@@ -46,8 +57,6 @@ export async function POST(req) {
             const surveys = await turso.execute("SELECT * FROM Exams WHERE Mapel = 'SURVEY'");
             output.surveys = surveys.rows;
         }
-      } 
-
 
       } else if (role === 'siswa') {
         output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
@@ -175,10 +184,7 @@ export async function POST(req) {
            args: ['SRES' + Date.now(), uid, sid, JSON.stringify(answers)] 
         });
         
-        try { 
-            await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=TotalSoal WHERE ID=?", args: [uid] }); 
-        } catch(e){ console.log("Ignore status update", e.message); }
-        
+        try { await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=TotalSoal WHERE ID=?", args: [uid] }); } catch(e){}
         return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
     }
 
@@ -257,14 +263,11 @@ export async function POST(req) {
            args: ['RES' + Date.now(), uid, eid, finalScore100, JSON.stringify(detailLog), violations > 0 ? `Pelanggaran: ${violations}x` : "-"] 
        });
        
-       try { 
-           await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=TotalSoal WHERE ID=?", args: [uid] }); 
-       } catch(e){ console.log("Ignore status update", e.message); }
+       try { await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=0 WHERE ID=?", args: [uid] }); } catch(e){}
 
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
-    // DALAM FUNGSI: if (action === 'getRecapList') {
     if (action === 'getRecapList') {
       const [role, , sekolah] = args;
       
@@ -290,7 +293,6 @@ export async function POST(req) {
       return NextResponse.json({ status: 'success', data: results.rows });
     }
 
-
     if (action === 'getSiswaDetailHasil') {
       const rid = args[0];
       const results = await turso.execute({ sql: "SELECT r.TotalNilai, r.Detail, e.Judul, e.Mapel FROM Results r JOIN Exams e ON r.ExamID = e.ExamID WHERE r.ResultID = ?", args: [rid] });
@@ -312,18 +314,15 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dilaporkan' });
     }
 
-    // PERBAIKAN: Penanganan Auto-Create kolom dan penangkapan Total Soal secara dinamis
     if (action === 'updateClientProgress') {
         const [examId, userId, terjawab, totalQ] = args;
         
         try {
-            // Coba update langsung untuk menghemat beban database
             await turso.execute({ 
                 sql: "UPDATE Users SET Terjawab=?, TotalSoal=?, Status='Sedang Mengerjakan' WHERE ID=?", 
                 args: [terjawab, totalQ, userId] 
             });
         } catch (e) {
-            // Jika kolom belum ada (error), buat kolomnya diam-diam di background, lalu update ulang
             try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (err) {}
             try { await turso.execute("ALTER TABLE Users ADD COLUMN TotalSoal INTEGER DEFAULT 0"); } catch (err) {}
             try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (err) {}
@@ -333,9 +332,7 @@ export async function POST(req) {
                     sql: "UPDATE Users SET Terjawab=?, TotalSoal=?, Status='Sedang Mengerjakan' WHERE ID=?", 
                     args: [terjawab, totalQ, userId] 
                 });
-            } catch (err) {
-                console.error("Gagal update progres:", err.message);
-            }
+            } catch (err) {}
         }
         return NextResponse.json({ status: 'success' });
     }
@@ -359,12 +356,11 @@ export async function POST(req) {
                    nama: u.Nama || 'Tanpa Nama', 
                    kelas: u.Kelas || '-', 
                    terjawab: u.Terjawab != null ? u.Terjawab : 0, 
-                   total: u.TotalSoal != null && u.TotalSoal > 0 ? u.TotalSoal : 10, // Menyesuaikan dengan total soal sebenarnya
+                   total: u.TotalSoal != null && u.TotalSoal > 0 ? u.TotalSoal : 10,
                    status: u.Status || 'Offline' 
                })) 
            });
        } catch (error) {
-           console.log("Live monitoring fetch error", error.message);
            return NextResponse.json({ status: 'success', data: [] });
        }
     }
@@ -373,7 +369,6 @@ export async function POST(req) {
     
     return NextResponse.json({ status: 'success', data: [] });
   } catch (error) {
-    console.error("API Action Error:", error);
     return NextResponse.json({ status: 'error', msg: error.message }, { status: 500 });
   }
 }
