@@ -6,20 +6,7 @@ export async function POST(req) {
   try {
     const { action, args } = await req.json();
 
-    if (action === 'getDashboardData') {
-      const [role, userId, , sekolah] = args; 
-      let exams, users;
-      
-      if (role === 'guru') {
-        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
-        users = await turso.execute({ sql: "SELECT * FROM Users WHERE Role = 'siswa' AND LOWER(TRIM(Sekolah)) = LOWER(TRIM(?))", args: [sekolah] });
-      } else {
-        exams = await turso.execute("SELECT * FROM Exams WHERE Mapel != 'SURVEY'");
-        users = await turso.execute("SELECT * FROM Users WHERE Role = 'siswa'");
-      }
-      
-      let output = { logo: 'https://lh3.googleusercontent.com/d/1SCvmdQxuqmX_f0gBaYt0Ob53Tws97Hnq' };
-      
+    // DALAM FUNGSI: if (action === 'getDashboardData') {
       if (role === 'admin' || role === 'guru') {
         output.exams = exams.rows;
         output.stats = { 
@@ -28,24 +15,26 @@ export async function POST(req) {
             activeUjian: exams.rows.filter(e => e.Status === 'Aktif').length 
         };
 
+        // PERBAIKAN 1: Filter rata-rata global hanya untuk nilai yang sudah dirilis jika role = guru
         const schoolRankQuery = await turso.execute(`
             SELECT u.Sekolah, AVG(r.TotalNilai) as RataRata 
             FROM Results r 
             JOIN Users u ON r.SiswaID = u.ID 
             JOIN Exams e ON r.ExamID = e.ExamID
-            WHERE e.Mapel != 'SURVEY'
+            WHERE e.Mapel != 'SURVEY' ${role === 'guru' ? "AND e.ShowStats = 'Yes'" : ""}
             GROUP BY u.Sekolah 
             ORDER BY RataRata DESC
         `);
         output.schoolRanks = schoolRankQuery.rows;
 
         if (role === 'guru') {
+            // PERBAIKAN 2: Filter siswa sekolah guru hanya untuk nilai yang sudah dirilis
             const studentRankQuery = await turso.execute({
                 sql: `SELECT u.Nama, u.Kelas, e.Mapel, AVG(r.TotalNilai) as RataRata 
                       FROM Results r 
                       JOIN Users u ON r.SiswaID = u.ID 
                       JOIN Exams e ON r.ExamID = e.ExamID 
-                      WHERE LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?)) AND e.Mapel != 'SURVEY'
+                      WHERE LOWER(TRIM(u.Sekolah)) = LOWER(TRIM(?)) AND e.Mapel != 'SURVEY' AND e.ShowStats = 'Yes'
                       GROUP BY u.ID, e.Mapel 
                       ORDER BY e.Mapel ASC, RataRata DESC`,
                 args: [sekolah]
@@ -57,6 +46,8 @@ export async function POST(req) {
             const surveys = await turso.execute("SELECT * FROM Exams WHERE Mapel = 'SURVEY'");
             output.surveys = surveys.rows;
         }
+      } 
+
 
       } else if (role === 'siswa') {
         output.availableExams = exams.rows.filter(e => e.Status === 'Aktif');
@@ -273,6 +264,7 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
     }
 
+    // DALAM FUNGSI: if (action === 'getRecapList') {
     if (action === 'getRecapList') {
       const [role, , sekolah] = args;
       
@@ -280,6 +272,7 @@ export async function POST(req) {
         SELECT r.ResultID, r.TotalNilai, r.WaktuSubmit, r.Detail, r.SiswaID, r.ExamID, r.Pelanggaran,
                u.Nama AS NamaSiswa, u.Kelas AS KelasSiswa, u.Sekolah AS SekolahSiswa,
                e.Judul AS JudulUjian, e.Mapel AS Mapel, e.PembuatID AS PembuatID,
+               e.ShowStats AS ShowStats,
                (SELECT Nama FROM Users WHERE ID = e.PembuatID) AS PembuatNama
         FROM Results r
         LEFT JOIN Users u ON r.SiswaID = u.ID
@@ -296,6 +289,7 @@ export async function POST(req) {
       const results = await turso.execute({ sql: sql, args: pArgs });
       return NextResponse.json({ status: 'success', data: results.rows });
     }
+
 
     if (action === 'getSiswaDetailHasil') {
       const rid = args[0];
