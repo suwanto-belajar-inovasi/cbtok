@@ -7,7 +7,7 @@ export async function POST(req) {
     const { action, args } = await req.json();
 
     if (action === 'getDashboardData') {
-      const [role, userId, , sekolah] = args; // Mengabaikan variabel kelas agar lolos ESLint
+      const [role, userId, , sekolah] = args; 
       let exams, users;
       
       if (role === 'guru') {
@@ -185,7 +185,7 @@ export async function POST(req) {
         });
         
         try { 
-            await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=0 WHERE ID=?", args: [uid] }); 
+            await turso.execute({ sql: "UPDATE Users SET Status='Survei Selesai', Terjawab=TotalSoal WHERE ID=?", args: [uid] }); 
         } catch(e){ console.log("Ignore status update", e.message); }
         
         return NextResponse.json({ status: 'success', msg: 'Survey dikirim' });
@@ -267,7 +267,7 @@ export async function POST(req) {
        });
        
        try { 
-           await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=0 WHERE ID=?", args: [uid] }); 
+           await turso.execute({ sql: "UPDATE Users SET Status='Selesai Ujian TKA', Terjawab=TotalSoal WHERE ID=?", args: [uid] }); 
        } catch(e){ console.log("Ignore status update", e.message); }
 
        return NextResponse.json({ status: 'success', msg: 'Berhasil dikirim', data: { score: finalScore100 } });
@@ -318,24 +318,36 @@ export async function POST(req) {
        return NextResponse.json({ status: 'success', msg: 'Berhasil dilaporkan' });
     }
 
-    // Auto-create kolom secara terpisah & aman agar monitoring 100% bekerja
+    // PERBAIKAN: Penanganan Auto-Create kolom dan penangkapan Total Soal secara dinamis
     if (action === 'updateClientProgress') {
-        const userId = args[1]; 
-        const terjawab = args[2];
+        const [examId, userId, terjawab, totalQ] = args;
         
-        try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (e) {}
-        try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (e) {}
-        
-        await turso.execute({ 
-            sql: "UPDATE Users SET Terjawab=?, Status='Sedang Mengerjakan' WHERE ID=?", 
-            args: [terjawab, userId] 
-        });
+        try {
+            // Coba update langsung untuk menghemat beban database
+            await turso.execute({ 
+                sql: "UPDATE Users SET Terjawab=?, TotalSoal=?, Status='Sedang Mengerjakan' WHERE ID=?", 
+                args: [terjawab, totalQ, userId] 
+            });
+        } catch (e) {
+            // Jika kolom belum ada (error), buat kolomnya diam-diam di background, lalu update ulang
+            try { await turso.execute("ALTER TABLE Users ADD COLUMN Terjawab INTEGER DEFAULT 0"); } catch (err) {}
+            try { await turso.execute("ALTER TABLE Users ADD COLUMN TotalSoal INTEGER DEFAULT 0"); } catch (err) {}
+            try { await turso.execute("ALTER TABLE Users ADD COLUMN Status TEXT DEFAULT 'Offline'"); } catch (err) {}
+            
+            try {
+                await turso.execute({ 
+                    sql: "UPDATE Users SET Terjawab=?, TotalSoal=?, Status='Sedang Mengerjakan' WHERE ID=?", 
+                    args: [terjawab, totalQ, userId] 
+                });
+            } catch (err) {
+                console.error("Gagal update progres:", err.message);
+            }
+        }
         return NextResponse.json({ status: 'success' });
     }
 
     if (action === 'getLiveMonitoring') {
-       const role = args[1] || '';
-       const sekolah = args[2] || '';
+       const [id, role, sekolah] = args;
        let sql = "SELECT * FROM Users WHERE Role='siswa'";
        let pArgs = [];
        
@@ -353,15 +365,16 @@ export async function POST(req) {
                    nama: u.Nama || 'Tanpa Nama', 
                    kelas: u.Kelas || '-', 
                    terjawab: u.Terjawab != null ? u.Terjawab : 0, 
-                   total: 10, // Default baseline jika total soal dinamis belum dipasing
+                   total: u.TotalSoal != null && u.TotalSoal > 0 ? u.TotalSoal : 10, // Menyesuaikan dengan total soal sebenarnya
                    status: u.Status || 'Offline' 
                })) 
            });
        } catch (error) {
            console.log("Live monitoring fetch error", error.message);
-           return NextResponse.json({ status: 'error', msg: error.message });
+           return NextResponse.json({ status: 'success', data: [] });
        }
     }
+
     if (action === 'sysResetCache' || action === 'autosaveAnswer') return NextResponse.json({ status: 'success' });
     
     return NextResponse.json({ status: 'success', data: [] });
