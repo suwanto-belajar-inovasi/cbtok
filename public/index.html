@@ -2051,7 +2051,7 @@ function runExam(qs, dur, isResume) {
 
     // PERBAIKAN 3: Autosave ke server dihapus, simpanan hanya fokus di LocalStorage (saveAnsLocal) untuk menghemat limit database Turso.
     clearInterval(autosaveInterval);
-
+}
     
 function saveAnsLocal(qid, type, idx) {
     let val; 
