@@ -1415,39 +1415,87 @@ function renderContent(page) {
     const isGuru = String(user.Role).trim().toLowerCase() === 'guru';
 
     if (page === 'admin-home') {
+        // --- 1. TABEL PERINGKAT SEKOLAH ---
         let schoolTable = `<div class="table-responsive"><table class="table table-sm table-hover text-center"><thead><tr class="table-light"><th>Rank</th><th>Sekolah</th><th>Rata-rata CBT</th></tr></thead><tbody>`;
         if(gData.schoolRanks && gData.schoolRanks.length > 0) {
-            gData.schoolRanks.forEach((s, i) => {
-                let isMySchool = (s.Sekolah === user.Sekolah) ? 'bg-warning bg-opacity-25 fw-bold' : '';
-                schoolTable += `<tr class="${isMySchool}"><td>${i+1}</td><td class="text-start">${s.Sekolah}</td><td><span class="badge bg-primary rounded-pill">${Number(s.RataRata).toFixed(2)}</span></td></tr>`;
-            });
-        } else schoolTable += `<tr><td colspan="3" class="text-muted">Belum ada data nilai TKA</td></tr>`;
+            if (isGuru) {
+                // Khusus Guru: Hanya tampilkan rank sekolahnya sendiri
+                const myRankIndex = gData.schoolRanks.findIndex(s => s.Sekolah === user.Sekolah);
+                if (myRankIndex !== -1) {
+                    const mySchool = gData.schoolRanks[myRankIndex];
+                    schoolTable += `<tr class="bg-warning bg-opacity-25 fw-bold"><td>${myRankIndex + 1}</td><td class="text-start">${mySchool.Sekolah}</td><td><span class="badge bg-primary rounded-pill">${Number(mySchool.RataRata).toFixed(2)}</span></td></tr>`;
+                } else {
+                    schoolTable += `<tr><td colspan="3" class="text-muted">Belum ada data nilai untuk sekolah Anda</td></tr>`;
+                }
+            } else {
+                // Khusus Admin: Tampilkan semua sekolah
+                gData.schoolRanks.forEach((s, i) => {
+                    let isMySchool = (s.Sekolah === user.Sekolah) ? 'bg-warning bg-opacity-25 fw-bold' : '';
+                    schoolTable += `<tr class="${isMySchool}"><td>${i+1}</td><td class="text-start">${s.Sekolah}</td><td><span class="badge bg-primary rounded-pill">${Number(s.RataRata).toFixed(2)}</span></td></tr>`;
+                });
+            }
+        } else {
+            schoolTable += `<tr><td colspan="3" class="text-muted">Belum ada data nilai TKA</td></tr>`;
+        }
         schoolTable += `</tbody></table></div>`;
 
-        let studentTable = '';
+        // --- 2. WIDGET PERINGKAT SISWA DENGAN FILTER ---
+        let extraWidget = '';
         if(isGuru && gData.studentRanks) {
-            studentTable = `<div class="table-responsive" style="max-height: 300px; overflow-y: auto;"><table class="table table-sm table-hover"><thead><tr class="table-light"><th>Mapel TKA</th><th>Nama</th><th>Kelas</th><th>Skor</th></tr></thead><tbody>`;
-            let currentMapel = ''; let rankCounter = 1;
-            gData.studentRanks.forEach((st) => {
-                if(st.Mapel !== currentMapel) { currentMapel = st.Mapel; rankCounter = 1; }
-                let topBadge = rankCounter <= 3 ? `<i class="fas fa-trophy text-warning me-1"></i> ` : '';
-                studentTable += `<tr><td><span class="badge bg-info text-dark">${st.Mapel}</span></td><td>${topBadge}${st.Nama}</td><td>${st.Kelas}</td><td><span class="badge bg-success rounded-pill">${Number(st.RataRata).toFixed(2)}</span></td></tr>`;
-                rankCounter++;
-            });
-            studentTable += `</tbody></table></div>`;
+            // Siapkan opsi filter Mapel/Ujian
+            const uniqueMapels = [...new Set(gData.studentRanks.map(st => st.Mapel))];
+            let mapelFilterOptions = `<option value="">Semua Mapel</option>` + uniqueMapels.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            // Simpan data mentah ke window agar bisa difilter oleh fungsi onchange
+            window.allStudentRanks = gData.studentRanks;
+
+            extraWidget = `
+            <div class="col-md-7">
+                <div class="card shadow-sm border-0 rounded-4 h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-success m-0"><i class="fas fa-medal me-2"></i>Peringkat Siswa (${user.Sekolah})</h5>
+                            <select id="filter-dash-mapel" class="form-select form-select-sm w-auto rounded-pill border-success shadow-sm" onchange="filterDashStudentRanks()">
+                                ${mapelFilterOptions}
+                            </select>
+                        </div>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr class="table-light"><th>Mapel TKA</th><th>Nama</th><th>Kelas</th><th>Skor</th></tr>
+                                </thead>
+                                <tbody id="dash-student-tbody">
+                                    <!-- Diisi oleh fungsi filterDashStudentRanks -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
         }
 
-        let extraWidget = isGuru ? `<div class="col-md-7"><div class="card shadow-sm border-0 rounded-4 h-100"><div class="card-body p-4"><h5 class="fw-bold text-success mb-3"><i class="fas fa-medal me-2"></i>Peringkat Siswa (${user.Sekolah})</h5>${studentTable}</div></div></div>` : ``;
         let schoolWidgetClass = isGuru ? `col-md-5` : `col-md-12`;
+        let cardTitleSekolah = isGuru ? 'Peringkat Sekolah Anda' : 'Peringkat Sekolah (Global)';
 
-        h = `<div class="row g-4 mb-4"><div class="col-md-6"><div class="card p-4 shadow-sm border-0 rounded-4" style="background: linear-gradient(135deg, #0f5132, #15803d); color: white;"><div class="d-flex justify-content-between align-items-center"><div><h1 class="fw-bold display-4 m-0">${gData.stats.totalSiswa}</h1><p class="m-0 fs-5">Total Siswa Terdaftar</p></div><i class="fas fa-users fa-4x opacity-50"></i></div></div></div><div class="col-md-6"><div class="card p-4 shadow-sm border-0 rounded-4" style="background: linear-gradient(135deg, #d4af37, #b48500); color: white;"><div class="d-flex justify-content-between align-items-center"><div><h1 class="fw-bold display-4 m-0">${gData.stats.totalUjian}</h1><p class="m-0 fs-5">Total Ujian Aktif</p></div><i class="fas fa-folder-open fa-4x opacity-50"></i></div></div></div></div>
-        <div class="row g-4">
-            <div class="${schoolWidgetClass}">
-                <div class="card shadow-sm border-0 rounded-4 h-100"><div class="card-body p-4"><h5 class="fw-bold text-primary mb-3"><i class="fas fa-trophy me-2"></i>Peringkat Sekolah (Global)</h5>${schoolTable}</div></div>
-            </div>
-            ${extraWidget}
-        </div>`;
+        h = `<div class="row g-4 mb-4">
+                <div class="col-md-6"><div class="card p-4 shadow-sm border-0 rounded-4" style="background: linear-gradient(135deg, #0f5132, #15803d); color: white;"><div class="d-flex justify-content-between align-items-center"><div><h1 class="fw-bold display-4 m-0">${gData.stats.totalSiswa}</h1><p class="m-0 fs-5">Total Siswa Terdaftar</p></div><i class="fas fa-users fa-4x opacity-50"></i></div></div></div>
+                <div class="col-md-6"><div class="card p-4 shadow-sm border-0 rounded-4" style="background: linear-gradient(135deg, #d4af37, #b48500); color: white;"><div class="d-flex justify-content-between align-items-center"><div><h1 class="fw-bold display-4 m-0">${gData.stats.totalUjian}</h1><p class="m-0 fs-5">Total Ujian Aktif</p></div><i class="fas fa-folder-open fa-4x opacity-50"></i></div></div></div>
+             </div>
+             <div class="row g-4">
+                <div class="${schoolWidgetClass}">
+                    <div class="card shadow-sm border-0 rounded-4 h-100"><div class="card-body p-4"><h5 class="fw-bold text-primary mb-3"><i class="fas fa-trophy me-2"></i>${cardTitleSekolah}</h5>${schoolTable}</div></div>
+                </div>
+                ${extraWidget}
+             </div>`;
+             
+        area.html(h);
+        
+        // Panggil fungsi filter pertama kali untuk mengisi tabel siswa
+        if (isGuru) setTimeout(() => filterDashStudentRanks(), 50);
+        return; // Selesaikan eksekusi khusus admin-home
     }
+
+        
     else if (page === 'admin-ujian') {
         isSurveyMode = false;
         let uniqueMapel = [...new Set(gData.exams.map(e => e.Mapel))];
@@ -1532,6 +1580,44 @@ function renderContent(page) {
         }
     }
     area.html(h);
+}
+// Fungsi Filter untuk Peringkat Siswa di Dashboard Guru
+function filterDashStudentRanks() {
+    const tbody = document.getElementById('dash-student-tbody');
+    if (!tbody || !window.allStudentRanks) return;
+    
+    const filterVal = document.getElementById('filter-dash-mapel').value;
+    let filtered = window.allStudentRanks;
+    
+    // Filter berdasarkan mapel jika dropdown tidak kosong
+    if (filterVal) {
+        filtered = window.allStudentRanks.filter(st => st.Mapel === filterVal);
+    }
+    
+    let html = '';
+    let currentMapel = ''; 
+    let rankCounter = 1;
+    
+    filtered.forEach((st) => {
+        if(st.Mapel !== currentMapel) { 
+            currentMapel = st.Mapel; 
+            rankCounter = 1; 
+        }
+        let topBadge = rankCounter <= 3 ? `<i class="fas fa-trophy text-warning me-1"></i> ` : '';
+        html += `<tr>
+                    <td><span class="badge bg-info text-dark">${st.Mapel}</span></td>
+                    <td>${topBadge}${st.Nama}</td>
+                    <td>${st.Kelas}</td>
+                    <td><span class="badge bg-success rounded-pill">${Number(st.RataRata).toFixed(2)}</span></td>
+                 </tr>`;
+        rankCounter++;
+    });
+    
+    if(filtered.length === 0) {
+        html = `<tr><td colspan="4" class="text-center text-muted py-4">Belum ada data nilai siswa.</td></tr>`;
+    }
+    
+    tbody.innerHTML = html;
 }
 
 function laporTrobel(rid) {
