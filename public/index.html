@@ -973,7 +973,8 @@ function renderRecapTable() {
 
 // Fungsi Merender Baris Tabel secara Dinamis
 function renderRecapRows(data) {
-    const isAdmin = String(user.Role).trim().toLowerCase() === 'admin';
+    const role = String(user.Role).trim().toLowerCase();
+    const isAdmin = role === 'admin';
     let h = '';
     
     if(!data || data.length === 0) {
@@ -988,7 +989,25 @@ function renderRecapRows(data) {
                 if (dArr.length > 0 && dArr[0].responses) isSurvey = true; 
             } catch(e) {}
             
-            let displayNilai = isSurvey ? `<span class="badge bg-info text-dark rounded-pill px-3 fs-6">Survei</span>` : `<span class="badge bg-success rounded-pill px-3 fs-6">${r.TotalNilai}</span>`;
+            let displayNilai = '';
+            let actionBtn = '';
+
+            // Jika Survei
+            if (isSurvey) {
+                displayNilai = `<span class="badge bg-info text-dark rounded-pill px-3 fs-6">Survei</span>`;
+                actionBtn = `<button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="printRecap('${r.ResultID}')" title="Cetak Rincian"><i class="fas fa-print"></i></button>`;
+            } 
+            // Jika Ujian Biasa
+            else {
+                // Kunci jika Role adalah Guru dan Admin belum mengaktifkan ShowStats
+                if (role === 'guru' && r.ShowStats !== 'Yes' && r.ShowStats !== 'Aktif') {
+                    displayNilai = `<span class="badge bg-secondary rounded-pill px-3"><i class="fas fa-lock me-1"></i> Menunggu Rilis</span>`;
+                    actionBtn = `<button class="btn btn-sm btn-outline-secondary rounded-circle me-1" title="Akses Dikunci Admin" disabled><i class="fas fa-lock"></i></button>`;
+                } else {
+                    displayNilai = `<span class="badge bg-success rounded-pill px-3 fs-6">${r.TotalNilai}</span>`;
+                    actionBtn = `<button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="printRecap('${r.ResultID}')" title="Cetak Rincian"><i class="fas fa-print"></i></button>`;
+                }
+            }
 
             h += `<tr>
                     ${isAdmin ? `<td><input type="checkbox" class="form-check-input check-recap" value="${r.ResultID}" onchange="toggleBulkDeleteBtn()"></td>` : ''}
@@ -998,7 +1017,7 @@ function renderRecapRows(data) {
                     <td>${r.Mapel} - ${r.JudulUjian}</td>
                     <td>${displayNilai}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary rounded-circle me-1" onclick="printRecap('${r.ResultID}')" title="Cetak Rincian"><i class="fas fa-print"></i></button>
+                        ${actionBtn}
                         ${isAdmin ? `<button class="btn btn-sm btn-outline-danger rounded-circle" onclick="delResult('${r.ResultID}')" title="Hapus Hasil"><i class="fas fa-trash"></i></button>` : ''}
                     </td>
                   </tr>`;
@@ -1010,26 +1029,40 @@ function renderRecapRows(data) {
         toggleBulkDeleteBtn();
     }
 }
-    
-function downloadExcelRecap() {
+    function downloadExcelRecap() {
     if(!window.currentFilteredData || window.currentFilteredData.length === 0) { 
         return Swal.fire('Data Kosong', 'Tidak ada data nilai yang tampil untuk diunduh.', 'info'); 
     }
     
+    const role = String(user.Role).trim().toLowerCase();
     const fUjian = $('#filter-ujian').val() || 'Semua_Ujian'; 
     const fSekolah = $('#filter-sekolah').val() || 'Semua_Sekolah';
     
     // Siapkan data array untuk SheetJS
-    let dataToExport = window.currentFilteredData.map((r, i) => ({
-        "No": i + 1,
-        "Waktu Submit": r.WaktuSubmit,
-        "Nama Siswa": r.NamaSiswa,
-        "Kelas": r.KelasSiswa || '-',
-        "Sekolah": r.SekolahSiswa || '-',
-        "Mapel": r.Mapel,
-        "Judul Ujian": r.JudulUjian,
-        "Nilai Akhir": r.TotalNilai
-    }));
+    let dataToExport = window.currentFilteredData.map((r, i) => {
+        let isSurvey = false;
+        try { let dArr = JSON.parse(r.Detail); if (dArr.length > 0 && dArr[0].responses) isSurvey = true; } catch(e) {}
+
+        let nilaiTampil = r.TotalNilai;
+        
+        // Kunci Excel untuk Guru jika ShowStats = No
+        if (role === 'guru' && !isSurvey && r.ShowStats !== 'Yes' && r.ShowStats !== 'Aktif') {
+            nilaiTampil = 'Menunggu Rilis';
+        } else if (isSurvey) {
+            nilaiTampil = 'Survei Selesai';
+        }
+
+        return {
+            "No": i + 1,
+            "Waktu Submit": r.WaktuSubmit,
+            "Nama Siswa": r.NamaSiswa,
+            "Kelas": r.KelasSiswa || '-',
+            "Sekolah": r.SekolahSiswa || '-',
+            "Mapel": r.Mapel,
+            "Judul Ujian": r.JudulUjian,
+            "Nilai Akhir": nilaiTampil
+        };
+    });
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wscols = [ {wch:5}, {wch:22}, {wch:35}, {wch:10}, {wch:30}, {wch:15}, {wch:35}, {wch:12} ];
@@ -1039,6 +1072,7 @@ function downloadExcelRecap() {
     XLSX.utils.book_append_sheet(wb, ws, "Rekap_Nilai");
     XLSX.writeFile(wb, `Rekap_Nilai_${fSekolah}_${fUjian}.xlsx`);
 }
+
 
 // Logika Pencarian & Filter
 function applyFilterRecap() {
@@ -1120,6 +1154,7 @@ function printFilteredRecap() {
   if(!window.currentFilteredData || window.currentFilteredData.length === 0) { Swal.fire('Data Kosong', 'Tidak ada data nilai yang tampil untuk dicetak.', 'info'); return; }
   const fUjian = $('#filter-ujian').val() || 'Semua Ujian'; const fKelas = $('#filter-kelas').val() || 'Semua Kelas';
   let namaPengawas = window.currentFilteredData.length > 0 ? window.currentFilteredData[0].PembuatNama : user.Nama;
+  const role = String(user.Role).trim().toLowerCase();
   
   let content = `<div style="text-align:center; padding-bottom:10px; margin-bottom:20px;">
       <h3 style="margin:0; color:#0f5132; text-decoration: underline;">REKAPITULASI HASIL UJIAN</h3>
@@ -1128,9 +1163,23 @@ function printFilteredRecap() {
   <table style="width:100%; border-collapse:collapse; margin-bottom:30px; font-size:14px;" border="1">
       <thead style="background:#f1f5f9;"><tr><th style="padding:8px;">No</th><th style="padding:8px;">Waktu Submit</th><th style="padding:8px;">Nama Siswa</th><th style="padding:8px;">Kelas</th><th style="padding:8px;">Mapel / Judul</th><th style="padding:8px;">Nilai Akhir (Maks 100)</th></tr></thead>
       <tbody>`;
+  
   window.currentFilteredData.forEach((r, i) => { 
-      content += `<tr><td style="padding:8px; text-align:center;">${i + 1}</td><td style="padding:8px; text-align:center;">${r.WaktuSubmit}</td><td style="padding:8px;">${r.NamaSiswa}</td><td style="padding:8px; text-align:center;">${r.KelasSiswa}</td><td style="padding:8px;">${r.Mapel} - ${r.JudulUjian}</td><td style="padding:8px; text-align:center; font-weight:bold; color:#064e3b; font-size:16px;">${r.TotalNilai}</td></tr>`; 
+      let isSurvey = false;
+      try { let dArr = JSON.parse(r.Detail); if (dArr.length > 0 && dArr[0].responses) isSurvey = true; } catch(e) {}
+
+      let nilaiTampil = r.TotalNilai;
+      
+      // Kunci PDF Cetak untuk Guru jika ShowStats = No
+      if (role === 'guru' && !isSurvey && r.ShowStats !== 'Yes' && r.ShowStats !== 'Aktif') {
+          nilaiTampil = '<i style="color:#64748b;">Menunggu Rilis</i>';
+      } else if (isSurvey) {
+          nilaiTampil = 'Survei Selesai';
+      }
+
+      content += `<tr><td style="padding:8px; text-align:center;">${i + 1}</td><td style="padding:8px; text-align:center;">${r.WaktuSubmit}</td><td style="padding:8px;">${r.NamaSiswa}</td><td style="padding:8px; text-align:center;">${r.KelasSiswa}</td><td style="padding:8px;">${r.Mapel} - ${r.JudulUjian}</td><td style="padding:8px; text-align:center; font-weight:bold; color:#064e3b; font-size:16px;">${nilaiTampil}</td></tr>`; 
   });
+  
   content += `</tbody></table>
   <div style="text-align:right; margin-top:40px;">
       <p>Surabaya, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
@@ -1139,6 +1188,7 @@ function printFilteredRecap() {
   </div>`;
   downloadHTMLToPDF('Rekap_Nilai_Ujian', content);
 }
+
 
 function printRecap(rid) {
   const d = recapDataStore[rid]; if(!d) return;
@@ -1415,38 +1465,32 @@ function renderContent(page) {
     const isGuru = String(user.Role).trim().toLowerCase() === 'guru';
 
     if (page === 'admin-home') {
-        // --- 1. TABEL PERINGKAT SEKOLAH ---
         let schoolTable = `<div class="table-responsive"><table class="table table-sm table-hover text-center"><thead><tr class="table-light"><th>Rank</th><th>Sekolah</th><th>Rata-rata CBT</th></tr></thead><tbody>`;
         if(gData.schoolRanks && gData.schoolRanks.length > 0) {
             if (isGuru) {
-                // Khusus Guru: Hanya tampilkan rank sekolahnya sendiri
                 const myRankIndex = gData.schoolRanks.findIndex(s => s.Sekolah === user.Sekolah);
                 if (myRankIndex !== -1) {
                     const mySchool = gData.schoolRanks[myRankIndex];
                     schoolTable += `<tr class="bg-warning bg-opacity-25 fw-bold"><td>${myRankIndex + 1}</td><td class="text-start">${mySchool.Sekolah}</td><td><span class="badge bg-primary rounded-pill">${Number(mySchool.RataRata).toFixed(2)}</span></td></tr>`;
                 } else {
-                    schoolTable += `<tr><td colspan="3" class="text-muted">Belum ada data nilai untuk sekolah Anda</td></tr>`;
+                    schoolTable += `<tr><td colspan="3" class="text-muted py-3"><i class="fas fa-lock text-secondary fa-2x mb-2 opacity-50"></i><br>Tunggu Admin merilis nilai.</td></tr>`;
                 }
             } else {
-                // Khusus Admin: Tampilkan semua sekolah
                 gData.schoolRanks.forEach((s, i) => {
                     let isMySchool = (s.Sekolah === user.Sekolah) ? 'bg-warning bg-opacity-25 fw-bold' : '';
                     schoolTable += `<tr class="${isMySchool}"><td>${i+1}</td><td class="text-start">${s.Sekolah}</td><td><span class="badge bg-primary rounded-pill">${Number(s.RataRata).toFixed(2)}</span></td></tr>`;
                 });
             }
         } else {
-            schoolTable += `<tr><td colspan="3" class="text-muted">Belum ada data nilai TKA</td></tr>`;
+            schoolTable += `<tr><td colspan="3" class="text-muted py-3"><i class="fas fa-lock text-secondary fa-2x mb-2 opacity-50"></i><br>Tunggu Admin merilis nilai.</td></tr>`;
         }
         schoolTable += `</tbody></table></div>`;
 
-        // --- 2. WIDGET PERINGKAT SISWA DENGAN FILTER ---
         let extraWidget = '';
         if(isGuru && gData.studentRanks) {
-            // Siapkan opsi filter Mapel/Ujian
             const uniqueMapels = [...new Set(gData.studentRanks.map(st => st.Mapel))];
             let mapelFilterOptions = `<option value="">Semua Mapel</option>` + uniqueMapels.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // Simpan data mentah ke window agar bisa difilter oleh fungsi onchange
             window.allStudentRanks = gData.studentRanks;
 
             extraWidget = `
@@ -1473,6 +1517,8 @@ function renderContent(page) {
                 </div>
             </div>`;
         }
+// ... lanjut ke baris let schoolWidgetClass
+
 
         let schoolWidgetClass = isGuru ? `col-md-5` : `col-md-12`;
         let cardTitleSekolah = isGuru ? 'Peringkat Sekolah Anda' : 'Peringkat Sekolah (Global)';
@@ -1589,7 +1635,6 @@ function filterDashStudentRanks() {
     const filterVal = document.getElementById('filter-dash-mapel').value;
     let filtered = window.allStudentRanks;
     
-    // Filter berdasarkan mapel jika dropdown tidak kosong
     if (filterVal) {
         filtered = window.allStudentRanks.filter(st => st.Mapel === filterVal);
     }
@@ -1614,11 +1659,12 @@ function filterDashStudentRanks() {
     });
     
     if(filtered.length === 0) {
-        html = `<tr><td colspan="4" class="text-center text-muted py-4">Belum ada data nilai siswa.</td></tr>`;
+        html = `<tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-lock text-secondary fa-2x mb-2 opacity-50"></i><br>Tunggu Admin merilis nilai.</td></tr>`;
     }
     
     tbody.innerHTML = html;
 }
+
 
 function laporTrobel(rid) {
     Swal.fire({
